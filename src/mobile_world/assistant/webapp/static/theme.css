@@ -20,7 +20,8 @@
 
 /* 연습용·데모 표시는 앱에서 보이지 않게 */
 .demo-notice, .notice-box, .demo-box, [data-testid="demo-guide"], [data-testid="practice-notice"],
-#lg-p .note, [data-testid="link-split"], #demo-session-note { display: none !important; }
+#lg-p .note, [data-testid="link-split"], #demo-session-note,
+[data-testid="link-signup"] { display: none !important; }  /* sign-up is gone: both roles enter with one tap */
 
 /* 앱 머리줄: 위에 붙어 있고, 홈에서는 밥마중 로고, 안쪽 화면에서는 "뒤로" */
 .topbar {
