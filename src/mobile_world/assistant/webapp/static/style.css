@@ -1,0 +1,80 @@
+/* 고령자 UI: 글자 22px 이상, 터치 60px 이상, 간격 24px, 대비 7:1 목표, 단어 단위 줄바꿈 */
+:root {
+  --bg: #FFFBF4;
+  --ink: #2A1A12;
+  --muted: #5A4636;
+  --brand: #8E3210;
+  --brand-ink: #FFFFFF;
+  --card: #FFFFFF;
+  --line: #E6D8C8;
+  --listen: #1F6F3A;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font: 24px/1.5 -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+  word-break: keep-all;
+  -webkit-text-size-adjust: 100%;
+}
+.screen {
+  min-height: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+#screen-start { justify-content: center; text-align: center; }
+.logo { margin: 0 auto; border-radius: 24px; }
+h1 { font-size: 34px; margin: 0; }
+.lead { color: var(--muted); margin: 0; }
+.error { color: #A11; font-weight: 700; margin: 0; }
+.field { display: flex; flex-direction: column; gap: 8px; text-align: left; font-weight: 700; }
+.field input {
+  font: inherit; font-size: 30px; letter-spacing: 6px; text-align: center;
+  min-height: 64px; border: 3px solid var(--line); border-radius: 16px; padding: 8px;
+}
+.btn {
+  font: inherit; font-weight: 700; color: var(--ink); background: var(--card);
+  border: 3px solid var(--brand); border-radius: 18px; padding: 12px 20px; min-height: 64px;
+  cursor: pointer;
+}
+.btn.big { min-height: 80px; font-size: 28px; width: 100%; }
+.btn.primary { background: var(--brand); color: var(--brand-ink); }
+.btn.small { min-height: 60px; font-size: 22px; }
+.btn:active { transform: scale(0.98); }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.who { font-weight: 700; color: var(--muted); }
+.card {
+  background: var(--card); border: 3px solid var(--line); border-radius: 18px; padding: 16px 20px;
+}
+.card-title { color: var(--muted); font-size: 22px; }
+.card-main { font-size: 28px; font-weight: 800; }
+.card-sub { font-size: 22px; color: var(--muted); }
+.said {
+  font-size: 30px; font-weight: 800; line-height: 1.45; min-height: 3em;
+  color: var(--ink);
+}
+.log { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px; }
+.log li { font-size: 22px; padding: 10px 16px; border-radius: 16px; max-width: 90%; }
+.log li.me { align-self: flex-end; background: #F1E4D6; }
+.log li.bot { align-self: flex-start; background: var(--card); border: 2px solid var(--line); }
+.yesno { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.mic-area { margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.mic {
+  width: 132px; height: 132px; border-radius: 50%; border: none; cursor: pointer;
+  background: var(--brand); color: var(--brand-ink); box-shadow: 0 6px 18px rgba(142, 50, 16, .35);
+}
+.mic.listening { background: var(--listen); animation: pulse 1.2s infinite; }
+.mic.busy { background: #7A6A5C; }
+@keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(31,111,58,.5); } 50% { box-shadow: 0 0 0 22px rgba(31,111,58,0); } }
+.state { font-size: 26px; font-weight: 800; text-align: center; min-height: 1.5em; }
+.text-form { display: flex; gap: 12px; }
+.text-form input {
+  flex: 1; min-width: 0; font: inherit; font-size: 22px; min-height: 60px;
+  border: 3px solid var(--line); border-radius: 16px; padding: 8px 14px;
+}
+[hidden] { display: none !important; }

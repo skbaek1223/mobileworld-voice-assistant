@@ -38,6 +38,11 @@ NEULBAB_APP_DIR=/path/to/agent-company/product/app uv run mw assistant --mock-ne
   --model-name <model> --llm-base-url <openai-compatible-url> --api-key $API_KEY
 ```
 
+**휴대폰 웹앱 (안드로이드·아이폰):** 말로 쓰는 늘밥 비서. 처음에 어르신/보호자를 고르면 그 화면 하나만 나옵니다.
+```bash
+NEULBAB_APP_DIR=/path/to/agent-company/product/app python -m mobile_world.assistant.webapp --env-file .env --self-signed
+```
+
 구조, 툴 정의 방법, 앱 쪽 Kotlin 예시, 폰에서 직접 실행하도록 옮기는 계획은 [docs/voice-assistant.md](docs/voice-assistant.md)에 있습니다.
 
 ## 파일
@@ -45,6 +50,7 @@ NEULBAB_APP_DIR=/path/to/agent-company/product/app uv run mw assistant --mock-ne
 | 경로 | 내용 |
 |---|---|
 | `src/mobile_world/assistant/` | 음성 입출력, 기기 제어, 앱 툴, 앱 범위 가드, 에이전트, 세션 |
+| `src/mobile_world/assistant/webapp/` | 휴대폰 웹앱 (서버, OpenAI 음성, 화면) |
 | `src/mobile_world/assistant/neulbab/` | 늘밥 툴 계약을 구현한 모의 앱 (웹 `mock_api.js` 로직 이식) |
 | `src/mobile_world/core/subcommands/assistant.py` | `mw assistant` CLI |
 | `tests/assistant/` | 기기, LLM, 오디오 없이 돌아가는 테스트 |

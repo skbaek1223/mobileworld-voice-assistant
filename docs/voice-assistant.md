@@ -25,6 +25,7 @@
 | [`assistant/scope.py`](../src/mobile_world/assistant/scope.py) | `AppScopeGuard`: 홈 버튼과 다른 앱 실행을 차단하고, 앱을 벗어나면 되돌아옴 |
 | [`assistant/agent.py`](../src/mobile_world/assistant/agent.py) | `InAppAssistantAgent`: `general_e2e`를 확장해 툴 우선, 음성 답변, 확인 질문 규칙을 넣은 에이전트 |
 | [`assistant/neulbab/`](../src/mobile_world/assistant/neulbab/) | 늘밥 툴 계약을 구현한 모의 앱(웹 로직 이식), 역할별 툴과 말투 지침 |
+| [`assistant/webapp/`](../src/mobile_world/assistant/webapp/) | 휴대폰 웹앱: 서버(FastAPI, WebSocket), OpenAI 음성, 화면(HTML/JS) |
 | [`assistant/session.py`](../src/mobile_world/assistant/session.py) | 듣기 → 실행 → 말하기 루프. 이전 대화 문맥을 기억하고, 취소와 종료 명령을 처리 |
 
 ### 동작 규칙
@@ -145,6 +146,42 @@ uv run mw assistant --mock-neulbab --role parent \
 | 추론 강도 | GPT-5 같은 추론 모델의 생각 양 (`minimal`이 가장 빠름) | `--reasoning-effort` |
 
 결과는 [neulbab/eval.md](neulbab/eval.md)의 "결과"를 보세요. GPT-5 `minimal`에서 과제당 19.8초가 2.2초로 줄었습니다.
+
+## 휴대폰 웹앱 (안드로이드·아이폰)
+
+휴대폰 브라우저에서 말로 쓰는 늘밥 비서입니다. 처음 화면에서 **어르신** 또는 **보호자**를 고르면 그 화면 하나만 나옵니다.
+홈 화면에 추가하면 앱처럼 열립니다(안드로이드 Chrome의 "앱 설치", 아이폰 Safari의 "홈 화면에 추가").
+
+```
+휴대폰 ──WebSocket(https)──> 서버: 음성 인식(OpenAI) → 비서 세션(규칙/LLM/늘밥 모의 앱) → 문장마다 목소리(OpenAI TTS) → mp3
+```
+
+```bash
+export NEULBAB_APP_DIR=/path/to/agent-company/product/app
+python -m mobile_world.assistant.webapp --env-file /path/to/.env --self-signed
+# → 늘밥 음성 비서: https://<서버 IP>:8443/   접속 코드: 123456
+```
+
+| 옵션 | 기본값 | 뜻 |
+|---|---|---|
+| `--env-file` | `$OPENAI_API_KEY` | OpenAI 키가 든 파일. 키는 서버에만 있고 휴대폰으로 가지 않음 |
+| `--model-name` / `--reasoning-effort` | `gpt-5` / `minimal` | 비서 LLM |
+| `--stt-model` / `--tts-model` / `--tts-voice` | `gpt-4o-mini-transcribe` / `gpt-4o-mini-tts` / `coral` | 음성 인식·목소리. 목소리는 어르신께 말하듯 따뜻하고 조금 천천히 |
+| `--self-signed` | 꺼짐 | 자체 서명 인증서로 HTTPS. 휴대폰 마이크는 HTTPS에서만 켜짐 |
+| `--access-code` | 무작위 6자리 | 접속 번호. 모르는 사람이 API 비용을 쓰지 못하게 함 |
+| `--state-file` | 없음 | 가족의 주문·설정을 파일에 남김 |
+
+**화면과 동작**
+- 큰 마이크 버튼을 누르고 말하면, 말을 멈추고 약 1.2초 뒤에 자동으로 보냅니다.
+- 비서가 말하는 동안 마이크를 누르면 말을 멈추고 바로 듣습니다.
+- 확인 질문("주문할까요?")에는 자동으로 귀를 열고, 큰 **[네] [아니요]** 버튼도 같이 보여 줍니다.
+- 지금 주문 상태(메뉴, 단계, 도착 시각, 누가 주문했는지)가 5초마다 갱신됩니다. 어르신 폰과 보호자 폰이 같은 서버에 붙으면 같은 가족 상태를 봅니다.
+- 마이크를 쓸 수 없으면 "글로 쓰기"로도 대화할 수 있습니다.
+- 글자 22px 이상, 버튼 60px 이상, 간격 24px로 늘밥 고령자 UI 원칙을 따릅니다.
+
+**휴대폰에서 열기:** 휴대폰이 서버 IP에 닿아야 합니다(같은 망이나 VPN). 자체 서명 인증서는 처음 열 때 "안전하지 않음" 경고가 나오고, "계속"을 눌러야 합니다. 경고 없이 쓰려면 정식 인증서(`--ssl-certfile`, `--ssl-keyfile`)를 쓰거나, HTTPS 프록시 뒤에 두세요.
+
+**측정 (실제 OpenAI 음성으로 처음부터 끝까지):** 음성 인식 1.3~2.3초, 첫 문장 목소리 합성 약 1.4초입니다. 규칙으로 처리되는 요청도 첫 소리까지 3~4초 걸리고, LLM을 거치면 1초 뒤에 "잠시만요"가 먼저 나옵니다. 지금은 LLM보다 음성 처리가 더 깁니다.
 
 ## 온디바이스(앱 내장)로 옮기는 계획
 

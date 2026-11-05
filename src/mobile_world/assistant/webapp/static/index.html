@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#8E3210">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="늘밥 비서">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon-192.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="stylesheet" href="style.css">
+  <title>늘밥 비서</title>
+</head>
+<body>
+  <!-- 1. 시작: 접속 코드 + 누가 쓰는지 -->
+  <section id="screen-start" class="screen">
+    <img src="icon-192.png" alt="" class="logo" width="96" height="96">
+    <h1>늘밥 음성 비서</h1>
+    <p class="lead">말로 식사를 고르고 주문해요.<br>연습용이라 진짜 주문이나 결제는 되지 않아요.</p>
+    <label id="code-box" class="field" hidden>
+      <span>접속 번호</span>
+      <input id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="12" placeholder="번호 6자리">
+    </label>
+    <p id="start-error" class="error" role="alert" hidden></p>
+    <button class="btn big primary" data-role="parent">어르신으로 시작</button>
+    <button class="btn big" data-role="guardian">보호자로 시작</button>
+  </section>
+
+  <!-- 2. 대화 -->
+  <section id="screen-talk" class="screen" hidden>
+    <header class="top">
+      <button id="btn-home" class="btn small">처음으로</button>
+      <span id="who" class="who"></span>
+    </header>
+
+    <div id="order-card" class="card" hidden>
+      <div class="card-title">지금 주문</div>
+      <div id="order-main" class="card-main"></div>
+      <div id="order-sub" class="card-sub"></div>
+    </div>
+
+    <div id="said" class="said" aria-live="polite"></div>
+    <ol id="log" class="log"></ol>
+
+    <div id="yesno" class="yesno" hidden>
+      <button class="btn big primary" data-answer="네">네</button>
+      <button class="btn big" data-answer="아니요">아니요</button>
+    </div>
+
+    <div class="mic-area">
+      <button id="mic" class="mic" aria-label="말하기">
+        <svg viewBox="0 0 24 24" width="56" height="56" aria-hidden="true"><path fill="currentColor" d="M12 15a3.5 3.5 0 0 0 3.5-3.5v-6a3.5 3.5 0 1 0-7 0v6A3.5 3.5 0 0 0 12 15Zm6-3.5a1 1 0 1 0-2 0 4 4 0 0 1-8 0 1 1 0 1 0-2 0 6 6 0 0 0 5 5.91V20H8.5a1 1 0 1 0 0 2h7a1 1 0 1 0 0-2H13v-2.59a6 6 0 0 0 5-5.91Z"/></svg>
+      </button>
+      <div id="state" class="state">눌러서 말씀하세요</div>
+    </div>
+
+    <form id="text-form" class="text-form">
+      <input id="text" placeholder="글로 쓰기" autocomplete="off">
+      <button class="btn small">보내기</button>
+    </form>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>
