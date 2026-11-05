@@ -69,3 +69,44 @@ button, .btn { border-radius: 20px; }
 .bm-pam-row #pam-actions .btn { height: 100%; white-space: nowrap; }
 body:has(#pa-m:not([hidden])) #btn-nav-back { display: none; }
 body:has(#pa-m:not([hidden])) .bm-brand { display: flex; }
+
+/* 주문 단계: 무지개색 세로 막대 대신 택배 조회처럼 가로 한 줄.
+ * 지난 단계 = 초록 테두리 + 체크, 지금 단계 = 크게 + 홍시색 테두리, 남은 단계 = 흐린 회색. 선으로 이어 진행이 보이게 */
+ol.steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin: 8px 0 28px; }
+ol.steps .step {
+  position: relative; flex-direction: column; justify-content: flex-start; gap: 8px;
+  min-height: 0; padding: 0; border: 0; border-radius: 0; background: transparent;
+  color: var(--nb-text-sub); font-size: 22px; text-align: center;
+}
+ol.steps .step .step-pic {
+  position: relative; z-index: 1; width: 68px; height: 68px; margin-top: 6px; padding: 6px;
+  border-radius: 50%; background: #FFFFFF; border: 4px solid #E3D2C0; filter: grayscale(1); opacity: .5;
+}
+ol.steps .step-done .step-pic { border-color: #2E6B30; filter: none; opacity: 1; }
+ol.steps .step-current .step-pic {
+  width: 80px; height: 80px; margin-top: 0; border-color: var(--nb-primary); filter: none; opacity: 1;
+  box-shadow: 0 0 0 6px #FDE3D0;
+}
+ol.steps .step:not(:first-child)::before {
+  content: ""; position: absolute; z-index: 0; top: 37px; right: 50%; width: 100%; height: 6px; background: #E3D2C0;
+}
+ol.steps .step-done:not(:first-child)::before, ol.steps .step-current:not(:first-child)::before { background: #2E6B30; }
+ol.steps .step-done::after {
+  content: "\2713"; position: absolute; z-index: 2; top: 0; left: calc(50% + 16px);
+  width: 28px; height: 28px; border-radius: 50%; background: #2E6B30; color: #FFFFFF;
+  font-size: 18px; font-weight: 900; line-height: 28px; text-align: center;
+}
+ol.steps .step-label { font-weight: 700; }
+ol.steps .step-done .step-label { color: #1E4A2B; }
+ol.steps .step-current .step-label { color: #A8380A; font-size: 24px; font-weight: 900; }
+ol.steps .step-mark {  /* "끝"/"지금" stays for screen readers; the picture shows it */
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; padding: 0;
+}
+ol.steps { margin-top: 20px; }
+/* 지금 상태 글씨도 파랑·보라 대신: 진행 중은 홍시색, 도착은 초록 */
+[data-testid="order-status"][data-status] { color: #A8380A; background: transparent; }
+[data-testid="order-status"][data-status="arrived"] { color: #1E4A2B; }
+[data-testid="order-status"][data-status="cancelled"] { color: var(--nb-danger); }
+/* 도착은 다 끝난 것: 초록으로 */
+ol.steps .step-current[data-step="arrived"] .step-pic { border-color: #2E6B30; box-shadow: 0 0 0 6px #DCEEDC; }
+ol.steps .step-current[data-step="arrived"] .step-label { color: #1E4A2B; }
