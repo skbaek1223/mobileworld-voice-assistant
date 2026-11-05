@@ -50,4 +50,5 @@ NEULBAB_APP_DIR=/path/to/agent-company/product/app uv run mw assistant --mock-ne
 | `tests/assistant/` | 기기, LLM, 오디오 없이 돌아가는 테스트 |
 | `docs/` | 문서, 툴 정의 예시 |
 | `docs/neulbab/` | 늘밥 앱용 툴 계약 v0.1 ([설명](docs/neulbab/tool_contract.md), [정의](docs/neulbab/tools.json)) |
+| `docs/neulbab/eval*` | 늘밥 평가 과제 30개 ([설명](docs/neulbab/eval.md), [정의](docs/neulbab/eval_tasks.json)) |
 | `patches/mobileworld.patch` | MobileWorld 원본 수정분 |

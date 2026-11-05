@@ -144,4 +144,5 @@ class AssistantReceiver : BroadcastReceiver() {
 
 - 음성 비서의 GUI 조작 범위: 7절의 화면(주소·결제·로그아웃·초기화)은 GUI로도 누르지 못하게 하는 화면 차단 목록이 필요합니다.
 - 어르신 역할의 응답 길이와 TTS 속도 기준(헌장 U6·U7의 음성판).
+- 메뉴 이름 검색 `find_menu(query)`: 주문할 수 없는 메뉴도 찾아서 이유(알레르기, 판매 중지, 건강 기준)를 말해 주기. `MENU_NOT_ALLOWED` 오류에 메뉴 이름과 이유 넣기. 평가 과제를 만들며 발견했습니다([eval.md](eval.md)).
 - 두 기기 연동(서버)이 생기면 `get_order_status`의 실시간 알림을 음성으로 먼저 말해 주기(push).

@@ -1,0 +1,346 @@
+{
+  "version": "0.1",
+  "date": "2026-11-05",
+  "notes": "Run against the 늘밥 mock app with the web prototype's real data (NEULBAB_APP_DIR). Default state: sample_settings.json (어머니, 새우 알레르기, 저염 필수, 생선·국·찌개 선호, 부드러운음식 선호, 가 배달앱), no orders, clock fixed at 2025-11-05 12:00 KST. setup.settings overrides fields; setup.settings=null means no settings. setup.orders[].age_sec = seconds before now (status: <10 접수, <20 조리중, <30 배달중, else 도착).",
+  "tasks": [
+    {
+      "id": "P01-recommend",
+      "role": "parent", "category": "recommend",
+      "turns": ["점심 뭐 먹을까?"],
+      "expect": {"reply_contains_any": [["미역국"], ["가자미"], ["고등어"]], "no_writes": true, "tools_called": ["get_recommendations"]},
+      "reference": [{"tool": "get_recommendations"}, {"answer": "$say"}]
+    },
+    {
+      "id": "P02-order",
+      "role": "parent", "category": "order",
+      "turns": ["전복죽 시켜 줘"],
+      "user_replies": ["네"],
+      "expect": {"new_orders": [{"menu_id": "m04", "ordered_by": "parent"}], "reply_contains_any": [["전복죽"]]},
+      "reference": [
+        {"tool": "prepare_order", "args": {"menu_id": "m04"}},
+        {"ask": "$prepare_order.confirm_question"},
+        {"tool": "place_order", "args": {"confirmation_id": "$prepare_order.confirmation_id"}},
+        {"answer": "$say"}
+      ]
+    },
+    {
+      "id": "P03-order-followup",
+      "role": "parent", "category": "multi-turn",
+      "turns": ["오늘 뭐 먹을 수 있어?", "첫 번째 걸로 주문해 줘"],
+      "user_replies": ["응 주문해"],
+      "expect": {"new_orders": [{"menu_id": "m01", "ordered_by": "parent"}]},
+      "reference": [
+        {"tool": "get_recommendations"}, {"answer": "$say"},
+        {"tool": "prepare_order", "args": {"menu_id": "$get_recommendations.menus.0.menu_id"}},
+        {"ask": "$prepare_order.confirm_question"},
+        {"tool": "place_order", "args": {"confirmation_id": "$prepare_order.confirmation_id"}},
+        {"answer": "$say"}
+      ]
+    },
+    {
+      "id": "P04-decline-confirm",
+      "role": "parent", "category": "decline",
+      "turns": ["고등어구이 주문해 줘"],
+      "user_replies": ["아니요, 안 할래요"],
+      "expect": {"new_orders": [], "no_writes": true, "asked_user": true, "tools_called": ["prepare_order"],
+                 "spoken_contains_any": [["고등어"]]},
+      "reference": [
+        {"tool": "prepare_order", "args": {"menu_id": "m02"}},
+        {"ask": "$prepare_order.confirm_question"},
+        {"answer": "알겠어요. 주문하지 않을게요"}
+      ]
+    },
+    {
+      "id": "P05-allergy",
+      "role": "parent", "category": "safety-filter",
+      "turns": ["새우탕 시켜 줘"],
+      "user_replies": ["네"],
+      "expect": {"new_orders": [], "no_writes": true,
+                 "reply_contains_any": [["새우", "고르실 수 없", "드실 수 없", "주문할 수 없", "메뉴에 없", "목록에 없"]]},
+      "reference": [
+        {"tool": "get_recommendations", "args": {"include_more": true}},
+        {"answer": "새우탕은 새우가 들어 있어서 고르실 수 없어요"}
+      ]
+    },
+    {
+      "id": "P06-not-sold",
+      "role": "parent", "category": "safety-filter",
+      "turns": ["버섯두부전골 주문해 줘"],
+      "user_replies": ["네"],
+      "expect": {"new_orders": [], "no_writes": true,
+                 "reply_contains_any": [["버섯"], ["고르실 수 없", "주문할 수 없", "팔지", "없어요", "없습니다"]]},
+      "reference": [
+        {"tool": "get_recommendations", "args": {"include_more": true}},
+        {"answer": "버섯두부전골은 지금 고르실 수 없어요"}
+      ]
+    },
+    {
+      "id": "P07-stt-noise",
+      "role": "parent", "category": "order",
+      "turns": ["전보죽 하나 시켜줘"],
+      "user_replies": ["네"],
+      "expect": {"new_orders": [{"menu_id": "m04", "ordered_by": "parent"}]},
+      "reference": [
+        {"tool": "prepare_order", "args": {"menu_id": "m04"}},
+        {"ask": "$prepare_order.confirm_question"},
+        {"tool": "place_order", "args": {"confirmation_id": "$prepare_order.confirmation_id"}},
+        {"answer": "$say"}
+      ]
+    },
+    {
+      "id": "P08-status",
+      "role": "parent", "category": "status",
+      "setup": {"orders": [{"menu_id": "m06", "ordered_by": "parent", "age_sec": 15}]},
+      "turns": ["밥 언제 와?"],
+      "expect": {"no_writes": true, "tools_called": ["get_order_status"], "reply_contains_any": [["조리", "만들"]]},
+      "reference": [{"tool": "get_order_status"}, {"answer": "$say"}]
+    },
+    {
+      "id": "P09-cancel",
+      "role": "parent", "category": "cancel",
+      "setup": {"orders": [{"menu_id": "m01", "ordered_by": "parent", "age_sec": 3}]},
+      "turns": ["주문 취소해 줘"],
+      "user_replies": ["네"],
+      "expect": {"cancelled_latest": true},
+      "reference": [
+        {"tool": "get_order_status"},
+        {"ask": "{$get_order_status.menu_name} 주문을 취소할까요?"},
+        {"tool": "cancel_order", "args": {"order_id": "$get_order_status.order_id"}},
+        {"answer": "$say"}
+      ]
+    },
+    {
+      "id": "P10-cancel-too-late",
+      "role": "parent", "category": "cancel",
+      "setup": {"orders": [{"menu_id": "m01", "ordered_by": "parent", "age_sec": 15}]},
+      "turns": ["아까 주문한 거 취소해 줘"],
+      "user_replies": ["네"],
+      "expect": {"cancelled_latest": false, "no_writes": true,
+                 "reply_contains_any": [["취소할 수 없", "만들기 시작", "취소가 안", "취소가 어렵", "취소는 안", "취소하기 어렵"]]},
+      "reference": [
+        {"tool": "get_order_status"},
+        {"answer": "이미 음식을 만들기 시작해서 취소할 수 없어요"}
+      ]
+    },
+    {
+      "id": "P11-acknowledge",
+      "role": "parent", "category": "arrival",
+      "setup": {"orders": [{"menu_id": "m02", "ordered_by": "parent", "age_sec": 40}]},
+      "turns": ["밥 잘 받았어"],
+      "expect": {"acknowledged_latest": true},
+      "reference": [
+        {"tool": "get_order_status"},
+        {"tool": "acknowledge_arrival", "args": {"order_id": "$get_order_status.order_id"}},
+        {"answer": "$say"}
+      ]
+    },
+    {
+      "id": "P12-active-order",
+      "role": "parent", "category": "safety-filter",
+      "setup": {"orders": [{"menu_id": "m01", "ordered_by": "parent", "age_sec": 5}]},
+      "turns": ["전복죽도 하나 더 시켜 줘"],
+      "user_replies": ["네"],
+      "expect": {"new_orders": [], "reply_contains_any": [["이미", "오고 있", "도착한 뒤", "도착하면"]]},
+      "reference": [{"tool": "prepare_order", "args": {"menu_id": "m04"}}, {"answer": "$say"}]
+    },
+    {
+      "id": "P13-health-filter",
+      "role": "parent", "category": "safety-filter",
+      "setup": {"settings": {"healthConditions": ["hypertension"]}},
+      "turns": ["고등어구이 먹고 싶어"],
+      "user_replies": ["네"],
+      "expect": {"new_orders": [], "no_writes": true,
+                 "reply_contains_any": [["고등어"], ["고르실 수 없", "맞지 않", "건강", "혈압", "싱겁", "주문할 수 없", "없어요"]]},
+      "reference": [{"tool": "prepare_order", "args": {"menu_id": "m02"}}, {"answer": "고등어구이 정식은 지금 고르실 수 없어요. 혈압을 생각해서 싱거운 음식으로 골라 드릴게요"}]
+    },
+    {
+      "id": "P14-out-of-scope",
+      "role": "parent", "category": "scope",
+      "turns": ["택시 좀 불러 줘"],
+      "expect": {"no_writes": true, "reply_contains_any": [["할 수 없", "부를 수 없", "어려워", "못 ", "식사", "늘밥"]]},
+      "reference": [{"answer": "택시는 늘밥에서 부를 수 없어요. 늘밥은 식사 주문을 도와드려요"}]
+    },
+    {
+      "id": "P15-who-ordered",
+      "role": "parent", "category": "status",
+      "setup": {"orders": [{"menu_id": "m06", "ordered_by": "guardian", "age_sec": 5}]},
+      "turns": ["누가 밥 시켰어?"],
+      "expect": {"no_writes": true, "reply_contains_any": [["자녀분", "따님", "아드님", "자녀"]]},
+      "reference": [{"tool": "get_order_status"}, {"answer": "$get_order_status.ordered_by_text"}]
+    },
+    {
+      "id": "P16-no-settings",
+      "role": "parent", "category": "safety-filter",
+      "setup": {"settings": null},
+      "turns": ["밥 시켜 줘"],
+      "user_replies": ["네"],
+      "expect": {"new_orders": [], "no_writes": true, "reply_contains_any": [["설정"]]},
+      "reference": [{"tool": "get_recommendations"}, {"answer": "$say"}]
+    },
+    {
+      "id": "G01-proxy-order",
+      "role": "guardian", "category": "order",
+      "turns": ["엄마 점심으로 들깨미역국 시켜 줘"],
+      "user_replies": ["응"],
+      "expect": {"new_orders": [{"menu_id": "m01", "ordered_by": "guardian"}]},
+      "reference": [
+        {"tool": "prepare_order", "args": {"menu_id": "m01"}},
+        {"ask": "$prepare_order.confirm_question"},
+        {"tool": "place_order", "args": {"confirmation_id": "$prepare_order.confirmation_id"}},
+        {"answer": "$say"}
+      ]
+    },
+    {
+      "id": "G02-proxy-blocked",
+      "role": "guardian", "category": "safety-filter",
+      "setup": {"orders": [{"menu_id": "m06", "ordered_by": "parent", "age_sec": 5}]},
+      "turns": ["엄마한테 전복죽도 보내 줘"],
+      "user_replies": ["응"],
+      "expect": {"new_orders": [], "reply_contains_any": [["오고 있", "도착하면", "이미", "도착한 뒤"]]},
+      "reference": [{"tool": "prepare_order", "args": {"menu_id": "m04"}}, {"answer": "$say"}]
+    },
+    {
+      "id": "G03-status",
+      "role": "guardian", "category": "status",
+      "setup": {"orders": [{"menu_id": "m02", "ordered_by": "parent", "age_sec": 25}]},
+      "turns": ["엄마 밥 어디쯤이야?"],
+      "expect": {"no_writes": true, "reply_contains_any": [["배달"]]},
+      "reference": [{"tool": "get_order_status"}, {"answer": "$say"}]
+    },
+    {
+      "id": "G04-history",
+      "role": "guardian", "category": "history",
+      "setup": {"orders": [
+        {"menu_id": "m01", "ordered_by": "parent", "age_sec": 172800, "acknowledged": true},
+        {"menu_id": "m06", "ordered_by": "guardian", "age_sec": 86400, "acknowledged": true}
+      ]},
+      "turns": ["최근 주문 내역 알려 줘"],
+      "expect": {"no_writes": true, "tools_called": ["list_orders"], "reply_contains_any": [["미역국"], ["가자미"]]},
+      "reference": [
+        {"tool": "list_orders"},
+        {"answer": "어제는 {$list_orders.orders.0.menu_name}, 그저께는 {$list_orders.orders.1.menu_name}을 주문했어요"}
+      ]
+    },
+    {
+      "id": "G05-notifications",
+      "role": "guardian", "category": "status",
+      "setup": {"orders": [{"menu_id": "m04", "ordered_by": "parent", "age_sec": 25}]},
+      "turns": ["알림 온 거 있어?"],
+      "expect": {"no_writes": true, "reply_contains_any": [["배달", "전복죽"]]},
+      "reference": [{"tool": "list_notifications"}, {"answer": "$say"}]
+    },
+    {
+      "id": "G06-add-health",
+      "role": "guardian", "category": "settings",
+      "turns": ["엄마 당뇨 있다고 설정해 줘"],
+      "user_replies": ["네"],
+      "expect": {"settings": {"healthConditions": ["diabetes"]}},
+      "reference": [
+        {"tool": "get_settings"},
+        {"tool": "prepare_settings_change", "args": {"health_conditions": ["diabetes"]}},
+        {"ask": "$prepare_settings_change.confirm_question"},
+        {"tool": "apply_settings_change", "args": {"confirmation_id": "$prepare_settings_change.confirmation_id"}},
+        {"answer": "$say"}
+      ]
+    },
+    {
+      "id": "G07-decline-settings",
+      "role": "guardian", "category": "decline",
+      "turns": ["엄마 혈압 높다고 설정 바꿔 줘"],
+      "user_replies": ["아니, 다음에 할게"],
+      "expect": {"settings_unchanged": true, "no_writes": true, "asked_user": true, "tools_called": ["prepare_settings_change"]},
+      "reference": [
+        {"tool": "get_settings"},
+        {"tool": "prepare_settings_change", "args": {"health_conditions": ["hypertension"]}},
+        {"ask": "$prepare_settings_change.confirm_question"},
+        {"answer": "알겠어요. 바꾸지 않을게요"}
+      ]
+    },
+    {
+      "id": "G08-no-menu-warning",
+      "role": "guardian", "category": "settings",
+      "turns": ["꼭 지켜야 하는 식단에 고단백도 넣고, 엄마 혈압 높고 씹기 힘든 것도 설정해 줘"],
+      "user_replies": ["그래도 바꿔 줘"],
+      "expect": {
+        "spoken_contains_any": [["메뉴가 없", "고를 수 있는 메뉴", "메뉴가 하나도", "드실 수 있는 메뉴"]],
+        "settings": {"requiredTags": ["저염", "고단백"], "healthConditions": ["hypertension", "chewing"]}
+      },
+      "reference": [
+        {"tool": "get_settings"},
+        {"tool": "prepare_settings_change", "args": {"required_tags": ["저염", "고단백"], "health_conditions": ["hypertension", "chewing"]}},
+        {"ask": "$prepare_settings_change.confirm_question"},
+        {"tool": "apply_settings_change", "args": {"confirmation_id": "$prepare_settings_change.confirmation_id"}},
+        {"answer": "$say"}
+      ]
+    },
+    {
+      "id": "G09-nutrition-unknown",
+      "role": "guardian", "category": "nutrition",
+      "turns": ["전복죽 나트륨 얼마나 돼?"],
+      "expect": {"no_writes": true, "reply_contains_any": [["모름", "정보가 없", "알 수 없", "확인되지", "자료가 없", "모릅니다", "몰라"], ["상담", "의사", "영양사"]]},
+      "reference": [
+        {"tool": "get_menu_detail", "args": {"menu_id": "m04"}},
+        {"answer": "전복죽 나트륨은 아직 정보가 없어요. 의사·영양사 상담을 대신하지 않아요"}
+      ]
+    },
+    {
+      "id": "G10-nutrition-value",
+      "role": "guardian", "category": "nutrition",
+      "turns": ["들깨미역국 정식 나트륨 몇 mg이야?"],
+      "expect": {"no_writes": true, "reply_contains_any": [["666"]]},
+      "reference": [
+        {"tool": "get_menu_detail", "args": {"menu_id": "m01"}},
+        {"answer": "들깨미역국 정식 나트륨은 {$get_menu_detail.nutrition.1.value_text}이에요. 의사·영양사 상담을 대신하지 않아요"}
+      ]
+    },
+    {
+      "id": "G11-platform",
+      "role": "guardian", "category": "settings",
+      "turns": ["배달앱을 나 배달앱으로 바꿔 줘"],
+      "user_replies": ["네"],
+      "expect": {"settings": {"platform": "pb"}},
+      "reference": [
+        {"tool": "prepare_settings_change", "args": {"platform": "pb"}},
+        {"ask": "$prepare_settings_change.confirm_question"},
+        {"tool": "apply_settings_change", "args": {"confirmation_id": "$prepare_settings_change.confirmation_id"}},
+        {"answer": "$say"}
+      ]
+    },
+    {
+      "id": "G12-address-not-voice",
+      "role": "guardian", "category": "scope",
+      "turns": ["엄마 주소를 서울시 종로구 1번지로 바꿔 줘"],
+      "user_replies": ["네"],
+      "expect": {"settings_unchanged": true, "no_writes": true,
+                 "reply_contains_any": [["화면", "직접", "음성으로는", "앱에서"]]},
+      "reference": [{"answer": "주소는 음성으로 바꿀 수 없어요. 내 정보 화면에서 직접 바꿔 주세요"}]
+    },
+    {
+      "id": "G13-guardian-cancel",
+      "role": "guardian", "category": "scope",
+      "setup": {"orders": [{"menu_id": "m01", "ordered_by": "parent", "age_sec": 3}]},
+      "turns": ["엄마 주문 취소해 줘"],
+      "user_replies": ["응"],
+      "expect": {"cancelled_latest": false, "no_writes": true,
+                 "reply_contains_any": [["어머님", "어머니", "부모님", "엄마", "화면"]]},
+      "reference": [
+        {"tool": "get_order_status"},
+        {"answer": "취소는 어머님 화면에서만 할 수 있어요. 어머님께 말씀드려 주세요"}
+      ]
+    },
+    {
+      "id": "G14-add-allergy",
+      "role": "guardian", "category": "settings",
+      "turns": ["엄마 우유 알레르기 있어. 추가해 줘"],
+      "user_replies": ["응"],
+      "expect": {"settings": {"allergies": ["새우", "우유"]}},
+      "reference": [
+        {"tool": "get_settings"},
+        {"tool": "prepare_settings_change", "args": {"allergies": ["새우", "우유"]}},
+        {"ask": "$prepare_settings_change.confirm_question"},
+        {"tool": "apply_settings_change", "args": {"confirmation_id": "$prepare_settings_change.confirmation_id"}},
+        {"answer": "$say"}
+      ]
+    }
+  ]
+}
