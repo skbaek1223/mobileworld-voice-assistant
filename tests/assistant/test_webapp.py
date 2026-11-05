@@ -284,3 +284,50 @@ def test_bad_sync_up_is_ignored(neulbab_client):
         ws.send_json({"type": "state"})
         recv_until(ws, "state")
     assert neulbab_client.family.app.orders == [] and neulbab_client.family.app.settings
+
+
+def test_guidance_speech_transcribe_only_and_screen_hint(client):
+    with client.websocket_connect("/ws?code=123456&role=parent") as ws:
+        # on-screen guidance is read aloud without starting an assistant turn
+        ws.send_json({"type": "speak", "text": "오늘 뭐 드실래요? 미역국 정식이 있어요."})
+        first, _ = recv_until(ws, "say")
+        second, _ = recv_until(ws, "say")  # one clip per sentence
+        assert [first["text"], second["text"]] == ["오늘 뭐 드실래요?", "미역국 정식이 있어요."]
+        audio, _ = recv_until(ws, "audio")
+        assert base64.b64decode(audio["data"]).decode().startswith("MP3:")
+
+        # transcribe-only: the widget answers the screen's own 네/아니요 itself
+        ws.send_json({"type": "audio", "mime": "audio/mp4", "transcribe_only": True,
+                      "data": base64.b64encode("네".encode()).decode()})  # fmt: skip
+        heard, _ = recv_until(ws, "heard")
+        assert heard == {"type": "heard", "text": "네", "transcribe_only": True}
+        ws.send_json({"type": "state"})
+        _, seen = recv_until(ws, "state")
+        assert not [m for m in seen if m["type"] in ("thinking", "done")]
+    assert client.family.app.orders == []
+
+
+def test_screen_hint_reaches_the_assistant(app_dir):
+    seen = []
+
+    class SpyAgent(OrderAgent):
+        def initialize(self, instruction):
+            seen.append(instruction)
+            super().initialize(instruction)
+
+        def predict(self, obs):  # just answer (the snapshot mentions 미역국 too)
+            return "x", JSONAction(action_type="answer", text="화면을 봤어요.")
+
+    app = MockNeulbabApp(load_data(app_dir), tz=ZoneInfo("Asia/Seoul"))
+    web = create_app(
+        Family(app),
+        WebConfig(access_code="1", filler_after_sec=None),
+        FakeVoice(),
+        agent_factory=lambda tools, role: SpyAgent(tools, role),
+    )
+    with TestClient(web) as c, c.websocket_connect("/ws?code=1&role=parent") as ws:
+        ws.send_json(
+            {"type": "text", "text": "이거 뭐야?", "screen": "이대로 주문할까요? 전복죽 10,000원"}
+        )
+        recv_until(ws, "done")
+    assert "Screen the user is looking at now: 이대로 주문할까요? 전복죽 10,000원" in seen[0]

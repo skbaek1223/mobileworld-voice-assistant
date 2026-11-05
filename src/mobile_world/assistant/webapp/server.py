@@ -23,6 +23,7 @@ import asyncio
 import base64
 import json
 import queue
+import re
 import secrets
 import threading
 from collections.abc import Callable
@@ -213,6 +214,8 @@ class Connection:
         self.closed = False
         app = family.app
         tools = build_toolset(app, role)
+        self.screen = ""  # what the phone's 늘밥 screen shows right now (sent by the widget)
+        self._app_state = build_context_provider(app, role)
         self.tts = WebTTS(self.send, voice.synthesize if voice else None, self.pool)
         self.stt = WebSTT(self.send)
         self.session = VoiceAssistantSession(
@@ -227,7 +230,7 @@ class Connection:
             app_name="늘밥",
             tool_wait_time=0.0,
             router=build_router(role, app.errors),
-            context_provider=build_context_provider(app, role),
+            context_provider=self._context,
             commit_tools=commit_tools(app, role),
             filler_after_sec=cfg.filler_after_sec,
         )
@@ -265,13 +268,37 @@ class Connection:
         self.busy.set()
         threading.Thread(target=self._turn, args=(text,), daemon=True).start()
 
-    def audio(self, data_b64: str, mime: str) -> None:
+    def _context(self) -> str:
+        state = self._app_state()
+        if self.screen:
+            state += f"\nScreen the user is looking at now: {self.screen}"
+        return state
+
+    def set_screen(self, screen: Any) -> None:
+        if isinstance(screen, str):
+            self.screen = screen[:400]
+
+    def audio(self, data_b64: str, mime: str, transcribe_only: bool = False) -> None:
+        """``transcribe_only``: the widget handles the words itself (e.g. 네/아니요 on a
+        screen's own confirmation), so no assistant turn is started."""
+
         def work():
             text = self.voice.transcribe(base64.b64decode(data_b64), mime) if self.voice else ""
-            self.send({"type": "heard", "text": text})
-            self.utterance(text)
+            self.send({"type": "heard", "text": text, "transcribe_only": transcribe_only})
+            if not transcribe_only:
+                self.utterance(text)
 
         self.pool.submit(work)
+
+    def speak_only(self, text: Any) -> None:
+        """Read on-screen guidance aloud (TTS only, no LLM)."""
+        if not isinstance(text, str) or not text.strip():
+            return
+        # one clip per sentence: the short first one ("오늘 뭐 드실래요?") is ready
+        # quickly and plays while the rest is still being synthesized
+        for sentence in re.split(r"(?<=[.?!])\s+", text.strip()[:400]):
+            if sentence.strip():
+                self.tts.speak(sentence.strip())
 
     def close(self) -> None:
         self.closed = True
@@ -343,10 +370,18 @@ def create_app(
                     )
                     conn.tts.speak(greeting)
                 elif kind == "text":
+                    conn.set_screen(msg.get("screen"))
                     conn.send({"type": "heard", "text": msg.get("text", "")})
                     conn.utterance(msg.get("text", ""))
                 elif kind == "audio":
-                    conn.audio(msg.get("data", ""), msg.get("mime", "audio/webm"))
+                    conn.set_screen(msg.get("screen"))
+                    conn.audio(
+                        msg.get("data", ""),
+                        msg.get("mime", "audio/webm"),
+                        transcribe_only=bool(msg.get("transcribe_only")),
+                    )
+                elif kind == "speak":
+                    conn.speak_only(msg.get("text"))
                 elif kind == "silence":
                     conn.utterance("")
                 elif kind == "state":

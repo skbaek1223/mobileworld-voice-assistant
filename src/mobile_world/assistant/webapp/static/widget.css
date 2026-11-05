@@ -42,3 +42,16 @@
   font-family: inherit; font-size: 20px; font-weight: 700; line-height: 1;
 }
 .nbv [hidden] { display: none !important; }
+/* 어르신: one tap to allow sound (browsers require it), then everything is automatic */
+.nbv-start {
+  position: fixed; inset: 0; background: rgba(42, 26, 18, .55);
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+}
+.nbv-start-btn {
+  width: min(480px, 100%); min-height: 220px; border-radius: 28px; cursor: pointer;
+  border: 4px solid #FFFFFF; background: var(--nbv-brand); color: #FFFFFF;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+  font-family: inherit; box-shadow: 0 10px 30px rgba(0, 0, 0, .35); padding: 24px;
+}
+.nbv-start-main { font-size: 34px; font-weight: 800; line-height: 1.2; }
+.nbv-start-sub { font-size: 24px; font-weight: 600; line-height: 1.4; }
