@@ -104,9 +104,6 @@ PRACTICE_LINES = {
         ('<p class="field-help">연습용 배달앱이에요. 진짜 배달앱과 연결되지 않아요</p>', ""),
     ],
 }
-CREDITS_LINK = (  # the photos are CC BY / BY-SA: credit them
-    '<p style="text-align:center;margin:0 0 32px"><a href="/voice/credits.html" style="color:#4A3828">메뉴 사진 출처</a></p>\n'
-)
 MENU_PHOTO_DIR = STATIC_DIR / "menus"  # real food photos (credits.json); others keep their drawing
 MENU_PIC_FN = 'function menuPic(id) { return "assets/menus/" + id + ".svg"; }'
 
@@ -142,8 +139,6 @@ def restyle_page(name: str, html: str) -> str:
         html = html.replace(old, new)
     if name == "index.html":
         html = DESIGN_CHOOSER.sub("", html)
-    if name == "login.html":
-        html = html.replace("</body>", CREDITS_LINK + "</body>", 1)
     if name in VOICE_PAGES:
         html = html.replace("</body>", WIDGET_TAGS + "</body>", 1)
     return html
