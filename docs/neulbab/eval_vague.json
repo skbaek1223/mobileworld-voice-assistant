@@ -1,0 +1,965 @@
+{
+ "version": "0.2",
+ "date": "2026-11-05",
+ "notes": "Vague, indirect, disfluent and dialect requests an elderly parent (or guardian) might make. Same runner and defaults as eval_tasks.json. Orderable menus under the sample settings: m01 들깨미역국, m06 가자미조림, m02 고등어구이 (top 3), m04 전복죽, m08 닭가슴살 채소찜. Most tasks accept either ordering an allowed menu after the app's confirmation or asking/offering choices; `screen` is what the phone shows. v0.2: also limits the assistant's own clarifying questions and forbids describing menus that do not fit (e.g. 닭가슴살 as soft food).",
+ "tasks": [
+  {
+   "id": "PV01-anything",
+   "role": "parent",
+   "category": "vague-choice",
+   "turns": [
+    "아무거나 시켜 줘"
+   ],
+   "user_replies": [
+    "네",
+    "네",
+    "네"
+   ],
+   "expect": {
+    "orders_within": [
+     "m01",
+     "m06",
+     "m02",
+     "m04",
+     "m08"
+    ],
+    "any_of": [
+     {
+      "must_order": true
+     },
+     {
+      "new_orders": [],
+      "spoken_contains_any": [
+       [
+        "미역국",
+        "가자미",
+        "고등어",
+        "전복죽",
+        "닭가슴살"
+       ]
+      ]
+     }
+    ],
+    "max_agent_questions": 1
+   },
+   "reference": [
+    {
+     "tool": "prepare_order",
+     "args": {
+      "menu_id": "m01"
+     }
+    }
+   ]
+  },
+  {
+   "id": "PV02-soft-food",
+   "role": "parent",
+   "category": "vague-need",
+   "turns": [
+    "속이 좀 안 좋아. 부드러운 거 먹고 싶어"
+   ],
+   "user_replies": [
+    "네",
+    "네",
+    "네"
+   ],
+   "expect": {
+    "orders_within": [
+     "m01",
+     "m04",
+     "m06"
+    ],
+    "any_of": [
+     {
+      "must_order": true
+     },
+     {
+      "new_orders": [],
+      "spoken_contains_any": [
+       [
+        "미역국",
+        "전복죽",
+        "가자미"
+       ]
+      ]
+     }
+    ],
+    "max_agent_questions": 2,
+    "spoken_excludes": [
+     "닭가슴살",
+     "고등어"
+    ]
+   },
+   "reference": [
+    {
+     "tool": "prepare_order",
+     "args": {
+      "menu_id": "m04"
+     }
+    }
+   ]
+  },
+  {
+   "id": "PV03-fish",
+   "role": "parent",
+   "category": "vague-category",
+   "turns": [
+    "생선 먹고 싶어"
+   ],
+   "user_replies": [
+    "네",
+    "네",
+    "네"
+   ],
+   "expect": {
+    "orders_within": [
+     "m02",
+     "m06"
+    ],
+    "any_of": [
+     {
+      "must_order": true
+     },
+     {
+      "new_orders": [],
+      "spoken_contains_any": [
+       [
+        "고등어",
+        "가자미"
+       ]
+      ]
+     }
+    ],
+    "max_agent_questions": 2,
+    "spoken_excludes": [
+     "미역국",
+     "전복죽",
+     "닭가슴살"
+    ]
+   },
+   "reference": [
+    {
+     "tool": "prepare_order",
+     "args": {
+      "menu_id": "m06"
+     }
+    }
+   ]
+  },
+  {
+   "id": "PV04-porridge",
+   "role": "parent",
+   "category": "vague-category",
+   "turns": [
+    "죽 하나 줘"
+   ],
+   "user_replies": [
+    "네",
+    "네",
+    "네"
+   ],
+   "expect": {
+    "new_orders": [
+     {
+      "menu_id": "m04",
+      "ordered_by": "parent"
+     }
+    ]
+   },
+   "reference": [
+    {
+     "tool": "prepare_order",
+     "args": {
+      "menu_id": "m04"
+     }
+    }
+   ]
+  },
+  {
+   "id": "PV05-same-as-last",
+   "role": "parent",
+   "category": "vague-reference",
+   "turns": [
+    "저번에 먹은 거 또 먹을래"
+   ],
+   "user_replies": [
+    "네",
+    "네",
+    "네"
+   ],
+   "expect": {
+    "orders_within": [
+     "m06"
+    ],
+    "any_of": [
+     {
+      "must_order": true
+     },
+     {
+      "new_orders": [],
+      "spoken_contains_any": [
+       [
+        "가자미"
+       ]
+      ]
+     }
+    ]
+   },
+   "reference": [
+    {
+     "tool": "prepare_order",
+     "args": {
+      "menu_id": "m06"
+     }
+    }
+   ],
+   "setup": {
+    "orders": [
+     {
+      "menu_id": "m06",
+      "ordered_by": "parent",
+      "age_sec": 172800,
+      "acknowledged": true
+     }
+    ]
+   }
+  },
+  {
+   "id": "PV06-not-that-one",
+   "role": "parent",
+   "category": "vague-reference",
+   "turns": [
+    "어제 그거 말고 다른 거"
+   ],
+   "user_replies": [
+    "네",
+    "네",
+    "네"
+   ],
+   "expect": {
+    "orders_within": [
+     "m01",
+     "m06",
+     "m02",
+     "m04",
+     "m08"
+    ],
+    "not_ordered": [
+     "m01"
+    ],
+    "any_of": [
+     {
+      "must_order": true
+     },
+     {
+      "new_orders": [],
+      "spoken_contains_any": [
+       [
+        "가자미",
+        "고등어",
+        "전복죽",
+        "닭가슴살"
+       ]
+      ]
+     }
+    ]
+   },
+   "reference": [
+    {
+     "tool": "prepare_order",
+     "args": {
+      "menu_id": "m06"
+     }
+    }
+   ],
+   "setup": {
+    "orders": [
+     {
+      "menu_id": "m01",
+      "ordered_by": "parent",
+      "age_sec": 86400,
+      "acknowledged": true
+     }
+    ]
+   }
+  },
+  {
+   "id": "PV07-warm-soup",
+   "role": "parent",
+   "category": "vague-need",
+   "turns": [
+    "따뜻한 국물 있는 걸로"
+   ],
+   "user_replies": [
+    "네",
+    "네",
+    "네"
+   ],
+   "expect": {
+    "orders_within": [
+     "m01",
+     "m04"
+    ],
+    "any_of": [
+     {
+      "must_order": true
+     },
+     {
+      "new_orders": [],
+      "spoken_contains_any": [
+       [
+        "미역국",
+        "전복죽"
+       ]
+      ]
+     }
+    ],
+    "max_agent_questions": 2,
+    "spoken_excludes": [
+     "가자미",
+     "고등어",
+     "닭가슴살"
+    ]
+   },
+   "reference": [
+    {
+     "tool": "prepare_order",
+     "args": {
+      "menu_id": "m01"
+     }
+    }
+   ]
+  },
+  {
+   "id": "PV08-just-food",
+   "role": "parent",
+   "category": "vague-choice",
+   "turns": [
+    "밥 줘"
+   ],
+   "user_replies": [
+    "네",
+    "네",
+    "네"
+   ],
+   "expect": {
+    "orders_within": [
+     "m01",
+     "m06",
+     "m02",
+     "m04",
+     "m08"
+    ],
+    "any_of": [
+     {
+      "must_order": true
+     },
+     {
+      "new_orders": [],
+      "spoken_contains_any": [
+       [
+        "미역국",
+        "가자미",
+        "고등어",
+        "전복죽",
+        "닭가슴살"
+       ]
+      ]
+     }
+    ],
+    "max_agent_questions": 1
+   },
+   "reference": [
+    {
+     "tool": "prepare_order",
+     "args": {
+      "menu_id": "m01"
+     }
+    }
+   ]
+  },
+  {
+   "id": "PV09-first-one",
+   "role": "parent",
+   "category": "screen-reference",
+   "turns": [
+    "첫 번째 거로 할게"
+   ],
+   "user_replies": [
+    "네",
+    "네",
+    "네"
+   ],
+   "expect": {
+    "new_orders": [
+     {
+      "menu_id": "m01",
+      "ordered_by": "parent"
+     }
+    ]
+   },
+   "reference": [
+    {
+     "tool": "prepare_order",
+     "args": {
+      "menu_id": "m01"
+     }
+    }
+   ],
+   "screen": "오늘 뭐 드실래요? 들깨미역국 정식, 가자미조림 정식, 고등어구이 정식이 있어요."
+  },
+  {
+   "id": "PV10-that-one",
+   "role": "parent",
+   "category": "vague-reference",
+   "turns": [
+    "고등어구이 맛있어?",
+    "그럼 그걸로 할게"
+   ],
+   "user_replies": [
+    [],
+    [
+     "네"
+    ]
+   ],
+   "expect": {
+    "new_orders": [
+     {
+      "menu_id": "m02",
+      "ordered_by": "parent"
+     }
+    ],
+    "spoken_excludes": [
+     "짭짤",
+     "김치"
+    ]
+   },
+   "reference": [
+    [
+     {
+      "answer": "고등어구이 정식은 기름을 줄여 구운 생선이에요"
+     }
+    ],
+    [
+     {
+      "tool": "prepare_order",
+      "args": {
+       "menu_id": "m02"
+      }
+     }
+    ]
+   ]
+  },
+  {
+   "id": "PV11-hesitation",
+   "role": "parent",
+   "category": "disfluent",
+   "turns": [
+    "어… 그… 뭐더라… 미역국"
+   ],
+   "user_replies": [
+    "네",
+    "네",
+    "네"
+   ],
+   "expect": {
+    "orders_within": [
+     "m01"
+    ],
+    "any_of": [
+     {
+      "must_order": true
+     },
+     {
+      "new_orders": [],
+      "spoken_contains_any": [
+       [
+        "미역국"
+       ]
+      ]
+     }
+    ]
+   },
+   "reference": [
+    {
+     "tool": "prepare_order",
+     "args": {
+      "menu_id": "m01"
+     }
+    }
+   ]
+  },
+  {
+   "id": "PV12-cheap-tasty",
+   "role": "parent",
+   "category": "vague-need",
+   "turns": [
+    "싸고 맛있는 거"
+   ],
+   "user_replies": [
+    "네",
+    "네",
+    "네"
+   ],
+   "expect": {
+    "orders_within": [
+     "m01",
+     "m06",
+     "m02",
+     "m04",
+     "m08"
+    ],
+    "any_of": [
+     {
+      "must_order": true
+     },
+     {
+      "new_orders": [],
+      "spoken_contains_any": [
+       [
+        "미역국",
+        "가자미",
+        "고등어",
+        "전복죽",
+        "닭가슴살"
+       ]
+      ]
+     }
+    ],
+    "max_agent_questions": 2
+   },
+   "reference": [
+    {
+     "tool": "prepare_order",
+     "args": {
+      "menu_id": "m01"
+     }
+    }
+   ]
+  },
+  {
+   "id": "PV13-self-correction",
+   "role": "parent",
+   "category": "self-correction",
+   "turns": [
+    "취소… 아니다, 그냥 둬"
+   ],
+   "user_replies": [
+    "아니요"
+   ],
+   "expect": {
+    "cancelled_latest": false,
+    "no_writes": true
+   },
+   "reference": [
+    {
+     "answer": "알겠어요. 주문은 그대로 둘게요"
+    }
+   ],
+   "setup": {
+    "orders": [
+     {
+      "menu_id": "m01",
+      "ordered_by": "parent",
+      "age_sec": 3,
+      "acknowledged": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "PV14-you-decide",
+   "role": "parent",
+   "category": "vague-choice",
+   "turns": [
+    "몰라, 네가 알아서 해 줘"
+   ],
+   "user_replies": [
+    "네",
+    "네",
+    "네"
+   ],
+   "expect": {
+    "orders_within": [
+     "m01",
+     "m06",
+     "m02",
+     "m04",
+     "m08"
+    ],
+    "any_of": [
+     {
+      "must_order": true
+     },
+     {
+      "new_orders": [],
+      "spoken_contains_any": [
+       [
+        "미역국",
+        "가자미",
+        "고등어",
+        "전복죽",
+        "닭가슴살"
+       ]
+      ]
+     }
+    ],
+    "max_agent_questions": 1
+   },
+   "reference": [
+    {
+     "tool": "prepare_order",
+     "args": {
+      "menu_id": "m01"
+     }
+    }
+   ]
+  },
+  {
+   "id": "PV15-dialect",
+   "role": "parent",
+   "category": "dialect",
+   "turns": [
+    "밥 좀 시키도 되나"
+   ],
+   "user_replies": [
+    "네",
+    "네",
+    "네"
+   ],
+   "expect": {
+    "orders_within": [
+     "m01",
+     "m06",
+     "m02",
+     "m04",
+     "m08"
+    ],
+    "any_of": [
+     {
+      "must_order": true
+     },
+     {
+      "new_orders": [],
+      "spoken_contains_any": [
+       [
+        "미역국",
+        "가자미",
+        "고등어",
+        "전복죽",
+        "닭가슴살"
+       ]
+      ]
+     }
+    ],
+    "max_agent_questions": 1
+   },
+   "reference": [
+    {
+     "tool": "prepare_order",
+     "args": {
+      "menu_id": "m01"
+     }
+    }
+   ]
+  },
+  {
+   "id": "PV16-garbled",
+   "role": "parent",
+   "category": "stt-noise",
+   "turns": [
+    "들께 미역 구기 시켜죠"
+   ],
+   "user_replies": [
+    "네",
+    "네",
+    "네"
+   ],
+   "expect": {
+    "new_orders": [
+     {
+      "menu_id": "m01",
+      "ordered_by": "parent"
+     }
+    ]
+   },
+   "reference": [
+    {
+     "tool": "prepare_order",
+     "args": {
+      "menu_id": "m01"
+     }
+    }
+   ]
+  },
+  {
+   "id": "PV17-daughter-ordered",
+   "role": "parent",
+   "category": "vague-reference",
+   "turns": [
+    "전에 딸이 시켜준 거"
+   ],
+   "user_replies": [
+    "네",
+    "네",
+    "네"
+   ],
+   "expect": {
+    "orders_within": [
+     "m04"
+    ],
+    "any_of": [
+     {
+      "must_order": true
+     },
+     {
+      "new_orders": [],
+      "spoken_contains_any": [
+       [
+        "전복죽"
+       ]
+      ]
+     }
+    ]
+   },
+   "reference": [
+    {
+     "tool": "prepare_order",
+     "args": {
+      "menu_id": "m04"
+     }
+    }
+   ],
+   "setup": {
+    "orders": [
+     {
+      "menu_id": "m04",
+      "ordered_by": "guardian",
+      "age_sec": 86400,
+      "acknowledged": true
+     }
+    ]
+   }
+  },
+  {
+   "id": "PV18-meat",
+   "role": "parent",
+   "category": "vague-question",
+   "turns": [
+    "고기 반찬 있어?"
+   ],
+   "user_replies": [
+    "아니요"
+   ],
+   "expect": {
+    "orders_within": [
+     "m08"
+    ],
+    "spoken_contains_any": [
+     [
+      "닭가슴살"
+     ]
+    ]
+   },
+   "reference": [
+    {
+     "answer": "닭가슴살 채소찜이 있어요"
+    }
+   ]
+  },
+  {
+   "id": "PV19-not-salty",
+   "role": "parent",
+   "category": "vague-need",
+   "turns": [
+    "짜지 않은 걸로"
+   ],
+   "user_replies": [
+    "네",
+    "네",
+    "네"
+   ],
+   "expect": {
+    "orders_within": [
+     "m01",
+     "m06",
+     "m02",
+     "m04",
+     "m08"
+    ],
+    "any_of": [
+     {
+      "must_order": true
+     },
+     {
+      "new_orders": [],
+      "spoken_contains_any": [
+       [
+        "미역국",
+        "가자미",
+        "고등어",
+        "전복죽",
+        "닭가슴살"
+       ]
+      ]
+     }
+    ],
+    "max_agent_questions": 2
+   },
+   "reference": [
+    {
+     "tool": "prepare_order",
+     "args": {
+      "menu_id": "m01"
+     }
+    }
+   ]
+  },
+  {
+   "id": "PV20-full",
+   "role": "parent",
+   "category": "no-intent",
+   "turns": [
+    "아 배불러, 오늘은 됐어"
+   ],
+   "user_replies": [],
+   "expect": {
+    "new_orders": [],
+    "no_writes": true,
+    "asked_user": false
+   },
+   "reference": [
+    {
+     "answer": "알겠어요. 필요하시면 말씀해 주세요"
+    }
+   ]
+  },
+  {
+   "id": "GV01-take-care",
+   "role": "guardian",
+   "category": "vague-choice",
+   "turns": [
+    "엄마 밥 좀 챙겨 줘"
+   ],
+   "user_replies": [
+    "응",
+    "응"
+   ],
+   "expect": {
+    "orders_within": [
+     "m01",
+     "m06",
+     "m02",
+     "m04",
+     "m08"
+    ],
+    "any_of": [
+     {
+      "must_order": true
+     },
+     {
+      "new_orders": [],
+      "spoken_contains_any": [
+       [
+        "미역국",
+        "가자미",
+        "고등어",
+        "전복죽",
+        "닭가슴살"
+       ]
+      ]
+     }
+    ],
+    "max_agent_questions": 1
+   },
+   "reference": [
+    {
+     "tool": "prepare_order",
+     "args": {
+      "menu_id": "m01"
+     }
+    }
+   ]
+  },
+  {
+   "id": "GV02-blood-pressure",
+   "role": "guardian",
+   "category": "vague-settings",
+   "turns": [
+    "엄마 혈압 때문에 그런데 설정 좀 해 줘"
+   ],
+   "user_replies": [
+    "응"
+   ],
+   "expect": {
+    "settings": {
+     "healthConditions": [
+      "hypertension"
+     ]
+    }
+   },
+   "reference": [
+    {
+     "tool": "prepare_settings_change",
+     "args": {
+      "health_conditions": [
+       "hypertension"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "GV03-teeth",
+   "role": "guardian",
+   "category": "vague-settings",
+   "turns": [
+    "엄마가 요즘 이가 안 좋아"
+   ],
+   "user_replies": [
+    "응"
+   ],
+   "expect": {
+    "any_of": [
+     {
+      "settings": {
+       "healthConditions": [
+        "chewing"
+       ]
+      }
+     },
+     {
+      "settings": {
+       "requiredTags": [
+        "저염",
+        "부드러운음식"
+       ]
+      }
+     },
+     {
+      "settings_unchanged": true,
+      "spoken_contains_any": [
+       [
+        "씹기",
+        "설정"
+       ]
+      ]
+     }
+    ],
+    "spoken_excludes": [
+     "닭가슴살"
+    ]
+   },
+   "reference": [
+    {
+     "tool": "prepare_settings_change",
+     "args": {
+      "health_conditions": [
+       "chewing"
+      ]
+     }
+    }
+   ]
+  }
+ ]
+}

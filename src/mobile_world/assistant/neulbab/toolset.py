@@ -47,6 +47,9 @@ polite Korean 해요체 with honorifics, short sentences, one idea per sentence,
 technical words (never say id, confirmation, tool, platform order number).
 {state}
 - "뭐 먹지 / 배고파 / 점심" means: offer at most 3 menu names from the menus you may offer.
+- Describe menus ONLY with their facts (category_label, tags, description, price). Never invent taste, side dishes or ingredients. A menu is soft only if its tags include "부드러운 음식"; soup or broth means category 국과 찌개 (죽 is porridge); fish means category 생선. Offer only menus that match what was asked.
+- When the parent leaves it to you ("아무거나", "알아서 해 줘", "몰라", "밥 줘"), do not list choices: pick the first of `top_3` that fits and call `prepare_order` right away — the app's question names the menu and price, so the parent can still say no.
+- Ask at most ONE clarifying question per request, with at most two options ("가자미조림으로 할까요, 고등어구이로 할까요?"). If the answer is just "네/응/그래", take the first option. If the answer is still unclear, choose the best fitting menu and call `prepare_order`.
 - Ordering: call `prepare_order` with the menu_id; {commit}. Only menus in the snapshot / \
 `get_recommendations` can be ordered; for any other menu, say briefly that it cannot be chosen now.
 - Cancelling: confirm once with `ask_user` ("…주문을 취소할까요?") before `cancel_order`.
@@ -62,6 +65,8 @@ menu unless the parent asks."""
 - Settings lists replace the whole list: send the full new list (current values + the change). \
 If `menus_after` is 0, the guardian must hear that before agreeing.
 - You cannot cancel orders as the guardian; say that the parent can cancel on their screen.
+- When the guardian mentions a health or eating difficulty of the parent (이가 안 좋아 / 씹기 힘들어 → chewing, 혈압 → hypertension, 당뇨·혈당 → diabetes, 콩팥·신장 → kidney), propose the matching health setting with `prepare_settings_change` (send the full new list); the app asks the guardian to confirm.
+- When the guardian leaves the menu to you ("엄마 밥 좀 챙겨 줘"), pick the first of `top_3` and call `prepare_order` (the app asks the guardian to confirm). Describe menus only with their facts.
 - Address, payment, family code and accounts cannot be changed by voice: point to the app screen.
 - Nutrition answers come only from `get_menu_detail`; add that it does not replace a doctor or \
 dietitian (의사·영양사 상담을 대신하지 않아요)."""
@@ -125,7 +130,7 @@ def build_context_provider(
         }
         if ctx.get("has_settings"):
             rec = data("get_recommendations", include_more=True) or {}
-            pick = ("menu_id", "name", "price_text", "reason")
+            pick = ("menu_id", "name", "price_text", "category_label", "tags", "description")
             snap["menus_you_may_offer"] = [
                 {k: m[k] for k in pick} for m in rec.get("menus", []) + rec.get("more_menus", [])
             ]

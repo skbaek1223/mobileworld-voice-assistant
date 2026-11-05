@@ -191,3 +191,30 @@ def test_runner_on_fixture_data(app_dir):
     no_reply = dict(task, user_replies=[])
     r = run_task(no_reply, data, lambda *_: ReferenceAgent(plan))
     assert not r.success and r.statuses == ["cancelled"]  # silence is never consent
+
+
+# --- vague requests (docs/neulbab/eval_vague.json)
+@pytest.fixture(scope="module")
+def vague():
+    from pathlib import Path
+
+    return load_tasks(Path("docs/neulbab/eval_vague.json"))
+
+
+@needs_data
+def test_vague_references_pass(vague, data):
+    results = run_all(vague, data, lambda t: t["reference"])
+    assert not {k: r.failures for k, r in results.items() if not r.success}
+
+
+@needs_data
+def test_vague_checks_catch_wrong_behaviour(vague, data):
+    refuse_all = run_all(vague, data, refuse)
+    assert {k for k, r in refuse_all.items() if r.success} == {"PV13-self-correction", "PV20-full"}
+    always_chicken = run_all(
+        vague, data, lambda t: [{"tool": "prepare_order", "args": {"menu_id": "m08"}}]
+    )
+    wrong = {k for k, r in always_chicken.items() if not r.success}
+    # anything that names a kind of food, a past order, the screen or a menu must fail
+    assert {"PV02-soft-food", "PV03-fish", "PV04-porridge", "PV05-same-as-last", "PV09-first-one",
+            "PV11-hesitation", "PV16-garbled", "PV17-daughter-ordered", "PV20-full"} <= wrong  # fmt: skip

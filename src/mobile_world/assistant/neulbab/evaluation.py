@@ -206,8 +206,23 @@ def _norm(text: str) -> str:
 
 
 def check_task(task: dict, run: dict, app: MockNeulbabApp, before: dict) -> list[str]:
-    """Return a list of failed expectations (empty = success)."""
+    """Return a list of failed expectations (empty = success).
+
+    ``expect.any_of`` lists alternative expectation sets for requests with more than one
+    good outcome (e.g. "생선 먹고 싶어": order a fish dish after confirming, or ask which);
+    the task passes if the main set and at least one alternative pass.
+    """
     exp = task.get("expect", {})
+    fails = _check_expect(exp, run, app, before)
+    alternatives = exp.get("any_of") or []
+    if alternatives:
+        tried = [_check_expect(alt, run, app, before) for alt in alternatives]
+        if all(tried):
+            fails.append("no acceptable outcome: " + " | ".join("; ".join(t) for t in tried))
+    return fails
+
+
+def _check_expect(exp: dict, run: dict, app: MockNeulbabApp, before: dict) -> list[str]:
     fails: list[str] = []
     reply = _norm(run["final_reply"])
     spoken = _norm(" ".join(run["spoken"]))
@@ -222,6 +237,15 @@ def check_task(task: dict, run: dict, app: MockNeulbabApp, before: dict) -> list
                 fails.append(f"{key} contains forbidden '{word}'")
 
     new_orders = app.orders[len(before["orders"]) :]
+    if "orders_within" in exp:  # any new order must be one of these menus
+        bad = [o["menuId"] for o in new_orders if o["menuId"] not in exp["orders_within"]]
+        if bad:
+            fails.append(f"ordered {bad}, allowed only {exp['orders_within']}")
+    if exp.get("must_order") and not new_orders:
+        fails.append("nothing was ordered")
+    for menu_id in exp.get("not_ordered", []):
+        if any(o["menuId"] == menu_id for o in new_orders):
+            fails.append(f"{menu_id} must not be ordered")
     if "new_orders" in exp:
         got = [{"menu_id": o["menuId"], "ordered_by": o["orderedBy"]} for o in new_orders]
         if got != exp["new_orders"]:
@@ -251,6 +275,15 @@ def check_task(task: dict, run: dict, app: MockNeulbabApp, before: dict) -> list
         if changed:
             fails.append(f"settings changed: {sorted(changed)}")
 
+    if "max_agent_questions" in exp:  # the assistant's own questions (not the app's confirmation)
+        asked = sum(
+            1
+            for t in run["turn_actions"]
+            for a in t
+            if a.get("action_type") == "ask_user" and not a.get("by")
+        )
+        if asked > exp["max_agent_questions"]:
+            fails.append(f"asked {asked} questions, at most {exp['max_agent_questions']} allowed")
     if "asked_user" in exp:
         asked = any(a.get("action_type") == "ask_user" for t in run["turn_actions"] for a in t)
         if asked != exp["asked_user"]:
@@ -311,6 +344,14 @@ class TaskResult:
     routed_turns: int = 0
 
 
+def _with_screen(provider, task: dict):
+    """Add what the phone's screen shows (like the web app's screen hint)."""
+    screen = task.get("screen")
+    if not screen:
+        return provider
+    return lambda: provider() + f"\nScreen the user is looking at now: {screen}"
+
+
 def run_task(
     task: dict,
     data: NeulbabData,
@@ -360,7 +401,7 @@ def run_task(
         tool_wait_time=0.0,
         router=build_router(role, app.errors) if features["router"] else None,
         # snapshot reads use the untraced call: they are not the agent's tool calls
-        context_provider=build_context_provider(app, role, call=original)
+        context_provider=_with_screen(build_context_provider(app, role, call=original), task)
         if features["prefetch"]
         else None,
         commit_tools=commit_tools(app, role) if features["session_confirm"] else None,

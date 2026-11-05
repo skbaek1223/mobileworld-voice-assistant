@@ -1,6 +1,6 @@
 {
   "contract": "neulbab-assistant-tools",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "date": "2026-11-05",
   "package": "com.neulbab.app",
   "action_prefix": "com.neulbab.app.assistant.",
@@ -63,7 +63,7 @@
         "additionalProperties": false
       },
       "returns": {
-        "menus": "list of {menu_id, name, price, price_text (e.g. '8,500원'), category_label, reason (one easy sentence)}",
+        "menus": "list of {menu_id, name, price, price_text (e.g. '8,500원'), category_label (국과 찌개 | 생선 | 죽 | 고기반찬 | 밥과 국수), tags (e.g. ['저염', '부드러운 음식']), description, reason (one easy sentence)}. Describe menus only with these facts.",
         "more_menus": "same shape, only when include_more=true",
         "health_note": "string, e.g. '혈압을 생각해서 싱겁게 드시도록 골랐어요', or ''",
         "disclaimer": "'의사·영양사 상담을 대신하지 않아요' when health conditions are set, else ''"

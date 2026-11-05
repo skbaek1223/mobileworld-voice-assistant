@@ -219,6 +219,9 @@ class MockNeulbabApp:
             "price": m["price"],
             "price_text": format_price(m["price"]),
             "category_label": self.logic.category_label(m["category"]),
+            # facts the assistant may use to describe a menu (contract v0.3)
+            "tags": [self.logic.tag_label(t) for t in self.logic.tags_of(m)],
+            "description": m.get("description", ""),
             "reason": self.logic.reason_for(m, self.settings),
         }
 
