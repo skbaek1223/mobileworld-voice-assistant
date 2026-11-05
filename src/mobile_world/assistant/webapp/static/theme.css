@@ -110,3 +110,6 @@ ol.steps { margin-top: 20px; }
 /* 도착은 다 끝난 것: 초록으로 */
 ol.steps .step-current[data-step="arrived"] .step-pic { border-color: #2E6B30; box-shadow: 0 0 0 6px #DCEEDC; }
 ol.steps .step-current[data-step="arrived"] .step-label { color: #1E4A2B; }
+
+/* 첫 화면 역할 버튼: 사람 그림을 크게, 동그랗게 */
+.btn-role .role-pic { width: 72px; height: 72px; border-radius: 50%; box-shadow: 0 0 0 3px #FFFFFF; }

@@ -186,6 +186,11 @@ def restyle_page(name: str, html: str) -> str:
     if name == "login.html":
         html = html.replace("자녀분께 받은 번호로 들어가요", "누르면 바로 들어가요")
         html = html.replace("자녀분이 눌러 주세요", "누르면 바로 들어가요")
+        # friendlier role pictures: an older person and a family member with a heart
+        html = html.replace('src="assets/tab_my.svg" width="56" height="56" alt="사람 그림"',
+                            'src="/voice/role-guardian.svg" width="72" height="72" alt="보호자 그림"')
+        html = html.replace('src="assets/family_code.svg" width="56" height="56" alt="열쇠 그림"',
+                            'src="/voice/role-parent.svg" width="72" height="72" alt="어르신 그림"')
         html = html.replace("</body>", ONE_TAP_LOGIN + "</body>", 1)
     if name in VOICE_PAGES:
         html = html.replace("</body>", WIDGET_TAGS + "</body>", 1)
