@@ -224,7 +224,11 @@ def neulbab_client(app_dir):
             '{"name": "늘밥", "short_name": "늘밥", "description": "가족 (연습용 화면)",'
             ' "theme_color": "#8E3210"}'
         ),
-        "login.html": "<html><head><title>늘밥</title></head><body>늘밥에 오신 걸 환영해요</body></html>",
+        "login.html": (
+            "<html><head><title>늘밥</title></head><body>늘밥에 오신 걸 환영해요"
+            '<button type="button" id="login-role-guardian">보호자로 시작</button>\n'
+            '<button type="button" id="login-role-parent">어르신으로 시작</button></body></html>'
+        ),
     }
     for name, text in pages.items():
         (app_dir / name).write_text(text, encoding="utf-8")
@@ -274,6 +278,9 @@ def test_app_look_is_applied_when_served(neulbab_client):
     login = neulbab_client.get("/login.html").text
     assert "사진 출처" not in login and "#login-role-parent" in login and "loginParent" in login
     assert "#login-role-guardian" in login and "loginGuardian" in login  # no id/password either
+    assert login.index('id="login-role-parent"') < login.index('id="login-role-guardian"')  # 어르신 first
+    icon = neulbab_client.get("/assets/app_icon.svg")
+    assert icon.status_code == 200 and "집 지붕" in icon.text  # 밥마중 icon, not the prototype's
     assert neulbab_client.get("/mock_api.js").headers["cache-control"] == "no-cache"
     js = neulbab_client.get("/mock_api.js").text
     assert 'BM_PHOTOS = ["m01"' in js and "/voice/menus/" in js and "늘밥구" in js

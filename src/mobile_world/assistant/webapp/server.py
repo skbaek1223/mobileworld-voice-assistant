@@ -138,6 +138,12 @@ PAM_ROW = (
     '<div class="bm-pam-row"><button type="button" class="btn btn-big btn-secondary" id="bm-pam-back"'
     " onclick=\"document.getElementById('btn-nav-back').click()\">뒤로</button>" + PAM_ACTIONS
 )
+# 밥마중 app icon in place of the prototype's (home screen, tab icon, splash, start screen)
+ICON_FILES = {
+    "assets/app_icon.svg": "app-icon.svg",
+    "assets/app_icon_192.png": "app-icon-192.png",
+    "assets/app_icon_512.png": "app-icon-512.png",
+}
 MENU_PHOTO_DIR = STATIC_DIR / "menus"  # real food photos (credits.json); others keep their drawing
 MENU_PIC_FN = 'function menuPic(id) { return "assets/menus/" + id + ".svg"; }'
 
@@ -186,6 +192,11 @@ def restyle_page(name: str, html: str) -> str:
     if name == "login.html":
         html = html.replace("자녀분께 받은 번호로 들어가요", "누르면 바로 들어가요")
         html = html.replace("자녀분이 눌러 주세요", "누르면 바로 들어가요")
+        # 어르신 first: they are the main users
+        g = re.search(r'<button[^>]*id="login-role-guardian".*?</button>', html, re.S)
+        pa = re.search(r'<button[^>]*id="login-role-parent".*?</button>', html, re.S)
+        if g and pa and g.start() < pa.start():
+            html = html[: g.start()] + pa.group(0) + html[g.end() : pa.start()] + g.group(0) + html[pa.end() :]
         # friendlier role pictures: an older person and a family member with a heart
         html = html.replace('src="assets/tab_my.svg" width="56" height="56" alt="사람 그림"',
                             'src="/voice/role-guardian.svg" width="72" height="72" alt="보호자 그림"')
@@ -546,6 +557,8 @@ def create_app(
 
     @app.get("/{path:path}")
     def neulbab_file(path: str):
+        if path in ICON_FILES:
+            return FileResponse(STATIC_DIR / ICON_FILES[path], headers=NO_CACHE)
         target = (app_root / path).resolve()
         if not target.is_relative_to(app_root) or not target.is_file():
             return PlainTextResponse("Not found", status_code=404)

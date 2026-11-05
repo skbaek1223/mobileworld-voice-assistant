@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="밥마중">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#D9561C"/><stop offset="1" stop-color="#B0380A"/>
+    </linearGradient>
+    <linearGradient id="bowl" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFF6EA"/><stop offset="1" stop-color="#F3D9BE"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <!-- 집 지붕: 집으로 마중 오는 밥 -->
+  <path d="M92 250 L256 116 L420 250" fill="none" stroke="#FFFFFF" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- 김 -->
+  <path d="M222 236c-14-16 14-28 0-46M290 236c-14-16 14-28 0-46" fill="none" stroke="#FFFFFF" stroke-width="16" stroke-linecap="round" opacity=".9"/>
+  <!-- 밥 -->
+  <path d="M146 300c8-40 56-58 110-58s102 18 110 58z" fill="#FFFFFF"/>
+  <!-- 그릇 -->
+  <path d="M120 298h272c0 72-60 118-136 118S120 370 120 298z" fill="url(#bowl)"/>
+  <path d="M138 336h236" stroke="#C2410C" stroke-width="12" stroke-linecap="round"/>
+  <rect x="210" y="410" width="92" height="20" rx="10" fill="#F3D9BE"/>
+</svg>
