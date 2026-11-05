@@ -269,6 +269,8 @@ def test_app_look_is_applied_when_served(neulbab_client):
     assert "연습용 카드" not in child
     login = neulbab_client.get("/login.html").text
     assert "사진 출처" not in login and "#login-role-parent" in login and "loginParent" in login
+    assert "#login-role-guardian" in login and "loginGuardian" in login  # no id/password either
+    assert neulbab_client.get("/mock_api.js").headers["cache-control"] == "no-cache"
     js = neulbab_client.get("/mock_api.js").text
     assert 'BM_PHOTOS = ["m01"' in js and "/voice/menus/" in js and "늘밥구" in js
     manifest = neulbab_client.get("/manifest.webmanifest").json()
