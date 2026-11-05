@@ -61,6 +61,12 @@
   };
 
   function mount() {
+    // One role per phone: the original "처음으로" goes to index.html, a hub that only shows
+    // when both roles are logged in on the same browser — otherwise it bounces straight
+    // back here. Send it to the first screen (보호자/어르신 선택) instead.
+    document.querySelectorAll('a[data-testid="home-button"]').forEach((a) => {
+      a.setAttribute("href", "login.html");
+    });
     // room at the end of the page so its last item can scroll above the mic
     const spacer = document.createElement("div");
     spacer.style.height = "112px";
