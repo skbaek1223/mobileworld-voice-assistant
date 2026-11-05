@@ -267,7 +267,8 @@ def test_app_look_is_applied_when_served(neulbab_client):
     assert 'hidden>뒤로</button><span class="bm-brand">' in parent  # app header logo
     child = neulbab_client.get("/child.html").text
     assert "연습용 카드" not in child
-    assert "사진 출처" not in neulbab_client.get("/login.html").text
+    login = neulbab_client.get("/login.html").text
+    assert "사진 출처" not in login and "#login-role-parent" in login and "loginParent" in login
     js = neulbab_client.get("/mock_api.js").text
     assert 'BM_PHOTOS = ["m01"' in js and "/voice/menus/" in js and "늘밥구" in js
     manifest = neulbab_client.get("/manifest.webmanifest").json()

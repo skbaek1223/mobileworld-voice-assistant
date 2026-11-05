@@ -104,6 +104,15 @@ PRACTICE_LINES = {
         ('<p class="field-help">연습용 배달앱이에요. 진짜 배달앱과 연결되지 않아요</p>', ""),
     ],
 }
+# 어르신 sign in with one tap: no family-code keypad. The tap signs in to this phone's
+# family (the one the guardian set up here, else the sample family) and opens parent.html.
+PARENT_ONE_TAP = (
+    "<script>document.addEventListener('click',function(e){"
+    "if(!e.target.closest||!e.target.closest('#login-role-parent'))return;"
+    "e.preventDefault();e.stopImmediatePropagation();"
+    "var A=window.NeulbapAPI;A.loginParent(String(A.currentFamily()),Date.now());"
+    "location.href='parent.html'},true)</script>\n"
+)
 MENU_PHOTO_DIR = STATIC_DIR / "menus"  # real food photos (credits.json); others keep their drawing
 MENU_PIC_FN = 'function menuPic(id) { return "assets/menus/" + id + ".svg"; }'
 
@@ -139,6 +148,9 @@ def restyle_page(name: str, html: str) -> str:
         html = html.replace(old, new)
     if name == "index.html":
         html = DESIGN_CHOOSER.sub("", html)
+    if name == "login.html":
+        html = html.replace("자녀분께 받은 번호로 들어가요", "누르면 바로 들어가요")
+        html = html.replace("</body>", PARENT_ONE_TAP + "</body>", 1)
     if name in VOICE_PAGES:
         html = html.replace("</body>", WIDGET_TAGS + "</body>", 1)
     return html
