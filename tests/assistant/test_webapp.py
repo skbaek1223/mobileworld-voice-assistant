@@ -279,6 +279,14 @@ def test_app_look_is_applied_when_served(neulbab_client):
         assert neulbab_client.get(path).status_code == 200
 
 
+def test_order_screen_resets_after_arrival():
+    from mobile_world.assistant.webapp.server import PA3_OLD, restyle_text
+
+    js = restyle_text("parent.js", "function renderPa3() {\n" + PA3_OLD + "\n}")
+    assert "order.acknowledgedAt) { openPa1(); return; }" in js  # confirmed elsewhere
+    assert 'v.status === "arrived"' in js and "actions.ack()" in js and "30 * 1000" in js
+
+
 def test_screen_and_voice_stay_in_sync(neulbab_client):
     fam = neulbab_client.family
     with (

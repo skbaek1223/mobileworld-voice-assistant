@@ -122,6 +122,15 @@ NO_CACHE = {"Cache-Control": "no-cache"}  # phones must pick up restyled files a
 # headers, so every page asks for its scripts and styles with a per-start version.
 ASSET_VERSION = secrets.token_hex(4)
 LOCAL_ASSET = re.compile(r'((?:src|href)=")(?!/|https?:)([^"?#]+\.(?:js|css))"')
+# 어르신 order screen goes back to the start once the meal is done: right away when the
+# order was confirmed elsewhere (voice, guardian), and by itself 30 s after it arrived.
+PA3_OLD = """    if (!order) { openPa1(); return; }
+    const v = A.pa3View(order, now(), confirming, A.loadSettings());"""
+PA3_NEW = """    if (!order || order.acknowledgedAt) { openPa1(); return; }
+    const v = A.pa3View(order, now(), confirming, A.loadSettings());
+    const arrivedAt = order.createdAt + STATUS_TIMES_SEC[STATUS_TIMES_SEC.length - 1] * 1000;
+    if (v.status === "arrived" && now() - arrivedAt >= AUTO_RESET_SEC * 1000) { actions.ack(); return; }"""
+AUTO_RESET_SEC = 30
 MENU_PHOTO_DIR = STATIC_DIR / "menus"  # real food photos (credits.json); others keep their drawing
 MENU_PIC_FN = 'function menuPic(id) { return "assets/menus/" + id + ".svg"; }'
 
@@ -140,6 +149,10 @@ def restyle_text(name: str, text: str) -> str:
     text = OLD_NAME.sub(BRAND, text)
     if name == "mock_api.js":
         text = text.replace(MENU_PIC_FN, _menu_pic_fn())
+    elif name == "parent.js":
+        if PA3_OLD not in text:
+            logger.warning("parent.js changed: the order screen will not reset by itself")
+        text = text.replace(PA3_OLD, PA3_NEW.replace("AUTO_RESET_SEC", str(AUTO_RESET_SEC)))
     elif name == "manifest.webmanifest":
         text = text.replace(" (연습용 화면)", "").replace(OLD_THEME_COLOR, THEME_COLOR)
     return text
