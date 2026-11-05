@@ -30,7 +30,7 @@
   let playQueue = new Map(), nextPlay = 1, lastSayId = 0, playing = null;
   let pendingListen = false, busy = false, hideTimer = null;
   let started = false, handsFree = false, lastGuideKey = "", quietUntil = 0, ambientTimer = null;
-  let sayGroup = false;  // sentences of one reply/guidance accumulate in the bubble
+  const sayTexts = new Map();  // clip id -> sentence; the caption shows the one being spoken
 
   /* ---------------- UI (Shadow DOM: page CSS and widget CSS never mix) ---------------- */
   const host = document.createElement("div");
@@ -43,7 +43,7 @@
     '  <span class="nbv-start-main">눌러서 시작하기</span>' +
     '  <span class="nbv-start-sub">화면을 한 번 누르시면<br>소리로 안내해 드려요</span></button></div>' +
     '<div class="nbv-bubble" hidden>' +
-    '  <button class="nbv-close" type="button" aria-label="자막 닫기">닫기</button>' +
+    '  <button class="nbv-close" type="button" aria-label="자막 닫기">×</button>' +
     '  <div class="nbv-heard" hidden></div>' +
     '  <div class="nbv-said" aria-live="polite"></div>' +
     '  <div class="nbv-yesno" hidden>' +
@@ -92,11 +92,16 @@
   }
 
   function showBubble() { clearTimeout(hideTimer); ui.bubble.hidden = false; }
+  function caption(text) {
+    ui.heard.hidden = true;
+    ui.said.textContent = text;
+    showBubble();
+  }
   function hideBubbleSoon() {
     clearTimeout(hideTimer);
     hideTimer = setTimeout(() => {
       if (!busy && !pendingListen && idle()) ui.bubble.hidden = true;
-    }, 8000);
+    }, 4000);
   }
   function setState(text, cls) {
     ui.state.textContent = text || "";
@@ -195,7 +200,6 @@
     if (!idle() || pendingListen) return;  // wait until quiet, then read
     lastGuideKey = g.key;
     if (recording && recorder) recorder.abort();
-    sayGroup = false;
     send({ type: "speak", text: g.speak });
   }
   setInterval(guideLoop, 700);
@@ -239,14 +243,12 @@
       case "sync": applySync(m); break;
       case "say":
         lastSayId = Math.max(lastSayId, m.id);
-        ui.said.textContent = sayGroup && ui.said.textContent ? ui.said.textContent + " " + m.text : m.text;
-        sayGroup = true;
-        showBubble();
+        sayTexts.set(m.id, m.text);
+        if (!playing && nextPlay === m.id) caption(m.text);  // first sentence: show at once
         break;
       case "audio": playQueue.set(m.id, m.data); pump(); break;
       case "heard":
-        sayGroup = false;
-        if (m.text) { ui.heard.textContent = "“" + m.text + "”"; ui.heard.hidden = false; showBubble(); }
+        if (m.text) { ui.heard.textContent = "“" + m.text + "”"; ui.heard.hidden = false; ui.said.textContent = ""; showBubble(); }
         if (m.transcribe_only) { onLocalAnswer(m.text); break; }
         if (!m.text && !pendingListen) { setState(""); afterPlayback(); }
         break;
@@ -292,12 +294,13 @@
     if (playing || !playQueue.has(nextPlay)) return;
     const data = playQueue.get(nextPlay);
     playQueue.delete(nextPlay);
+    if (sayTexts.has(nextPlay)) { caption(sayTexts.get(nextPlay)); sayTexts.delete(nextPlay); }
     nextPlay += 1;
     if (!data || !audioCtx) { pump(); afterPlayback(); return; }
     if (recording && recorder) recorder.abort();  // never record our own voice
     const bytes = Uint8Array.from(atob(data), (c) => c.charCodeAt(0));
     playing = true;
-    setState("말하고 있어요", "busy");
+    setState("", "busy");  // the mic colour shows it is speaking; keep the caption short
     audioCtx.decodeAudioData(bytes.buffer, (buf) => {
       if (playing !== true) return;
       const src = audioCtx.createBufferSource();
