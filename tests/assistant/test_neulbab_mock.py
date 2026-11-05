@@ -390,6 +390,9 @@ def test_reasoning_models_and_tools_only_images():
     assert default_runtime_conf("gpt-5", reasoning_effort="low")["reasoning_effort"] == "low"
     assert "reasoning_effort" not in default_runtime_conf("gpt-4.1", reasoning_effort="low")
     assert default_runtime_conf("claude-sonnet", gui=False)["history_n_images"] == 0
+    qwen = default_runtime_conf("qwen3-32b")
+    assert qwen["extra_body"] == {"chat_template_kwargs": {"enable_thinking": False}}
+    assert "extra_body" not in default_runtime_conf("qwen3-32b", reasoning_effort="high")
 
     img = Image.new("RGB", (4, 4))
     no_screen = InAppAssistantAgent("gpt-5", "http://localhost:1", gui=False)

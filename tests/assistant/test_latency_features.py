@@ -279,6 +279,7 @@ def test_context_snapshot(app):
     assert [m["menu_id"] for m in body["menus_you_may_offer"]] == ["f2", "f5", "f1", "f4"]
     assert body["latest_order"] is None and body["settings"]["payment_label"] == "등록한 첫째 카드"
     assert "address" not in body["settings"] and "options" not in body["settings"]
+    assert {"id": "pb", "label": "나 배달앱"} in body["settings"]["choices"]["platforms"]
     parent = json.loads(build_context_provider(app, "parent")().split("\n", 1)[1])
     assert "settings" not in parent
 
@@ -360,3 +361,49 @@ def test_filler_thread_is_cleaned_up(app):
     s.handle_request("x")
     time.sleep(0.05)
     assert threading.active_count() <= before
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        (
+            '{"action_type": "prepare_order", "menu_id": "m04"}',
+            ("prepare_order", {"menu_id": "m04"}),
+        ),
+        (
+            '{"action_type": "prepare_order", "args": {"menu_id": "m01"}}',
+            ("prepare_order", {"menu_id": "m01"}),
+        ),
+        ('{"action_type": "mcp", "name": "get_context"}', ("get_context", {})),
+        ('{"action_type": "launch_rocket"}', None),
+    ],
+)
+def test_tool_name_as_action_type_is_accepted(monkeypatch, raw, expected):
+    """Smaller open models often put the tool name in action_type."""
+    pytest.importorskip("openai")
+    from mobile_world.assistant.agent import InAppAssistantAgent
+
+    tools = [
+        {"name": "prepare_order", "inputSchema": {}},
+        {"name": "get_context", "inputSchema": {}},
+    ]
+    agent = InAppAssistantAgent(
+        "qwen2.5-14b-instruct", "http://localhost:1", gui=False, tools=tools
+    )
+    reply = SimpleNamespace(
+        choices=[
+            SimpleNamespace(
+                message=SimpleNamespace(content=f"Thought: x\nAction: {raw}"), finish_reason="stop"
+            )
+        ],
+        usage=None,
+    )
+    monkeypatch.setattr(agent.openai_client.chat.completions, "create", lambda **kw: reply)
+    agent.initialize("hi")
+    _, action = agent.predict(
+        {"screenshot": Image.new("RGB", (4, 4)), "tool_call": None, "ask_user_response": None}
+    )
+    if expected is None:
+        assert action.action_type == "unknown"  # unusable, but no crash
+    else:
+        assert (action.action_type, action.action_name, action.action_json) == ("mcp", *expected)

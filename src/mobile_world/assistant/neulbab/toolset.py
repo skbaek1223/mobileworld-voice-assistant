@@ -142,7 +142,13 @@ def build_context_provider(
         snap["latest_order"] = None if (order or {}).get("error") == "NO_ORDER" else order
         if role == "guardian" and ctx.get("has_settings"):
             settings = data("get_settings") or {}
-            settings.pop("options", None)
+            options = settings.pop("options", {}) or {}
+            # the values a guardian may choose (so nothing has to be guessed, e.g. 배달앱 names)
+            settings["choices"] = {
+                "platforms": options.get("platforms", []),
+                "health_conditions": options.get("health_conditions", []),
+                "allergies": options.get("allergies", []),
+            }
             snap["settings"] = settings
         return "App state (fetched just now):\n" + json.dumps(
             snap, ensure_ascii=False, separators=(",", ":")

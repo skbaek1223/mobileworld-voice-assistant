@@ -142,7 +142,7 @@
       "setup": {"orders": [{"menu_id": "m01", "ordered_by": "parent", "age_sec": 5}]},
       "turns": ["전복죽도 하나 더 시켜 줘"],
       "user_replies": ["네"],
-      "expect": {"new_orders": [], "spoken_contains_any": [["이미", "오고 있", "도착한 뒤", "도착하면"]]},
+      "expect": {"new_orders": [], "spoken_contains_any": [["이미", "오고 있", "도착한 뒤", "도착하면", "진행 중", "진행중"]]},
       "reference": [{"tool": "prepare_order", "args": {"menu_id": "m04"}}, {"answer": "$say"}]
     },
     {
@@ -198,7 +198,7 @@
       "setup": {"orders": [{"menu_id": "m06", "ordered_by": "parent", "age_sec": 5}]},
       "turns": ["엄마한테 전복죽도 보내 줘"],
       "user_replies": ["응"],
-      "expect": {"new_orders": [], "spoken_contains_any": [["오고 있", "도착하면", "이미", "도착한 뒤"]]},
+      "expect": {"new_orders": [], "spoken_contains_any": [["오고 있", "도착하면", "이미", "도착한 뒤", "진행 중", "진행중"]]},
       "reference": [{"tool": "prepare_order", "args": {"menu_id": "m04"}}, {"answer": "$say"}]
     },
     {

@@ -21,6 +21,7 @@ from mobile_world.assistant.prompts import (
     LANGUAGE_NAMES,
     build_system_prompt,
 )
+from mobile_world.runtime.utils.models import JSONAction
 
 # Reasoning models reject a non-default temperature and spend completion tokens on hidden
 # reasoning, so they need no temperature and a larger budget.
@@ -32,6 +33,11 @@ def default_runtime_conf(
 ) -> dict:
     """``reasoning_effort`` (minimal | low | medium | high) applies to reasoning models only."""
     images = 2 if gui else 0
+    if "qwen3" in model_name.lower():  # open model served by vLLM: skip the <think> pass
+        conf = {"history_n_images": images, "temperature": 0.0, "max_tokens": 2048}
+        if reasoning_effort in (None, "minimal", "low"):
+            conf["extra_body"] = {"chat_template_kwargs": {"enable_thinking": False}}
+        return conf
     if _REASONING_MODEL.search(model_name):
         conf = {"history_n_images": images, "max_tokens": 16000}
         if reasoning_effort:
@@ -159,3 +165,61 @@ class InAppAssistantAgent(GeneralE2EAgentMCP):
         if usage is not None:
             self._log_openai_usage(usage)
         return text.strip()
+
+    # ------------------------------------------------------------------ lenient actions
+    def predict(self, observation):
+        """Like GeneralE2E, but accept a tool name used as the action type.
+
+        Smaller open models often answer {"action_type": "prepare_order", "menu_id": "m04"}
+        instead of {"action_type": "mcp", "action_name": "prepare_order", "action_json": {...}}.
+        The intent is clear, so it is normalized instead of failing the whole request."""
+        from pydantic import ValidationError
+
+        try:
+            raw, action = super().predict(observation)
+            if action.action_type != "mcp" or action.action_name:
+                return raw, action
+            # "mcp" but the tool name sits under another key ({"name": ...})
+            fixed = self._normalize_tool_action(dict(self.actions[-1]))
+            if fixed is None:
+                return raw, JSONAction(action_type="unknown", text="invalid action")
+            self.actions[-1] = fixed
+            return raw, JSONAction(**fixed)
+        except ValidationError:
+            raw = self.history_responses[-1]["content"] if self.history_responses else ""
+            data = dict(self.actions[-1]) if self.actions else {}
+            fixed = self._normalize_tool_action(data)
+            if fixed is not None:
+                self.actions[-1] = fixed
+                logger.info(f"Normalized a tool call: {data} -> {fixed}")
+                return raw, JSONAction(**fixed)
+            logger.warning(f"Unusable action from the model: {data}")
+            return raw or "invalid action", JSONAction(action_type="unknown", text="invalid action")
+
+    def _normalize_tool_action(self, data: dict) -> dict | None:
+        names = {t.get("name") for t in self.tools}
+        kind = data.get("action_type")
+        name = kind if kind in names else None
+        if kind == "mcp":
+            name = data.get("action_name") or data.get("name") or data.get("tool")
+        if name not in names:
+            return None
+        args = (
+            data.get("action_json")
+            or data.get("args")
+            or data.get("arguments")
+            or data.get("parameters")
+        )
+        if not isinstance(args, dict):
+            skip = {
+                "action_type",
+                "action_name",
+                "name",
+                "tool",
+                "action_json",
+                "args",
+                "arguments",
+                "parameters",
+            }
+            args = {k: v for k, v in data.items() if k not in skip}
+        return {"action_type": "mcp", "action_name": name, "action_json": args}
