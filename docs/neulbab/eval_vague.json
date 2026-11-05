@@ -1,7 +1,7 @@
 {
- "version": "0.2",
+ "version": "0.3",
  "date": "2026-11-05",
- "notes": "Vague, indirect, disfluent and dialect requests an elderly parent (or guardian) might make. Same runner and defaults as eval_tasks.json. Orderable menus under the sample settings: m01 들깨미역국, m06 가자미조림, m02 고등어구이 (top 3), m04 전복죽, m08 닭가슴살 채소찜. Most tasks accept either ordering an allowed menu after the app's confirmation or asking/offering choices; `screen` is what the phone shows. v0.2: also limits the assistant's own clarifying questions and forbids describing menus that do not fit (e.g. 닭가슴살 as soft food).",
+ "notes": "Vague, indirect, disfluent and dialect requests an elderly parent (or guardian) might make. Same runner and defaults as eval_tasks.json. Orderable menus under the sample settings: m01 들깨미역국, m06 가자미조림, m02 고등어구이 (top 3), m04 전복죽, m08 닭가슴살 채소찜. Most tasks accept either ordering an allowed menu after the app's confirmation or asking/offering choices; `screen` is what the phone shows. v0.2: also limits the assistant's own clarifying questions and forbids describing menus that do not fit (e.g. 닭가슴살 as soft food). v0.3: past, already received orders must not be described as arriving now (PV05, PV17).",
  "tasks": [
   {
    "id": "PV01-anything",
@@ -203,6 +203,11 @@
        ]
       ]
      }
+    ],
+    "spoken_excludes": [
+     "도착했어요",
+     "도착했습니다",
+     "문 앞에"
     ]
    },
    "reference": [
@@ -720,6 +725,11 @@
        ]
       ]
      }
+    ],
+    "spoken_excludes": [
+     "도착했어요",
+     "도착했습니다",
+     "문 앞에"
     ]
    },
    "reference": [

@@ -61,7 +61,15 @@ ANSWER_TIMEOUT_SEC = 20.0  # how long to wait for a reply to the assistant's que
 VOICE_PAGES = {"parent.html": "parent", "child.html": "guardian"}  # 늘밥 pages that get a mic
 CODE_SNIPPET = (
     "<script>try{var c=new URLSearchParams(location.search).get('code');"
-    "if(c)localStorage.setItem('nb_code',c)}catch(e){}</script>"
+    "if(c)localStorage.setItem('nb_code',c);"
+    # one design only: the A/B chooser is removed, so always use the default (A)
+    "localStorage.setItem('neulbab_variant','a')}catch(e){}</script>"
+)
+# The 늘밥 home page offers an A/B design chooser for its research study; the voice app
+# uses one design, so the chooser ("화면 디자인을 바꿔 볼 수 있어요" + A안/B안 buttons) is removed.
+DESIGN_CHOOSER = re.compile(
+    r'<p class="note variant-help">.*?</p>\s*<nav class="links" aria-label="디자인 고르기">.*?</nav>',
+    re.DOTALL,
 )
 WIDGET_TAGS = '<script src="/voice/widget.js"></script>\n'  # its CSS loads inside a shadow root
 
@@ -422,6 +430,8 @@ def create_app(
             html = target.read_text(encoding="utf-8")
             # remember ?code=... before the page's own login redirect drops the query
             html = html.replace("<head>", "<head>" + CODE_SNIPPET, 1)
+            if target.name == "index.html":
+                html = DESIGN_CHOOSER.sub("", html)
             if target.name in VOICE_PAGES:
                 html = html.replace("</body>", WIDGET_TAGS + "</body>", 1)
             return HTMLResponse(html)

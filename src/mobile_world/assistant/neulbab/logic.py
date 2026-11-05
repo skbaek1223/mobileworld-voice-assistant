@@ -100,6 +100,11 @@ def dir_particle(word: str) -> str:
     return "로" if jong in (0, 8) else "으로"
 
 
+def topic_particle(word: str) -> str:
+    b = has_batchim(word)
+    return "은(는)" if b is None else ("은" if b else "는")
+
+
 def copula(word: str) -> str:
     """'이에요' / '예요' (not in the web app; used for spoken confirmations)."""
     b = has_batchim(word)
@@ -153,6 +158,11 @@ class NeulbabLogic:
     def when_text(self, ts: int) -> str:
         d = self._dt(ts)
         return f"{d.month}월 {d.day}일 " + self.clock_text(ts)
+
+    def day_text(self, ts: int, now: int) -> str:
+        """'오늘' / '어제' / '그저께' / 'N일 전' (calendar days in the local time zone)."""
+        days = (self._dt(now).date() - self._dt(ts).date()).days
+        return {0: "오늘", 1: "어제", 2: "그저께"}.get(days, f"{days}일 전")
 
     def meal_word(self, ts: int) -> str:
         h = self._dt(ts).hour

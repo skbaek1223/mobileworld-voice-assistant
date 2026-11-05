@@ -39,6 +39,7 @@ from mobile_world.assistant.neulbab.logic import (
     format_price,
     obj_particle,
     subj_particle,
+    topic_particle,
 )
 
 DEFAULT_CONTRACT = Path(__file__).resolve().parents[4] / "docs" / "neulbab" / "tools.json"
@@ -397,9 +398,17 @@ class MockNeulbabApp:
             "can_cancel": role == "parent" and self.logic.can_cancel(o, now),
             "acknowledged": bool(o.get("acknowledgedAt")),
             "platform_label": self._platform_label(o.get("platform")),
+            # when it was ordered, and whether it is already over (v0.4): an old, received
+            # order must not be read out as if it had just arrived
+            "ordered_at_text": self.logic.when_text(o["createdAt"]),
+            "ordered_day": self.logic.day_text(o["createdAt"], now),
+            "finished": bool(o.get("acknowledgedAt")) or st == "cancelled",
         }
         name = o["menuName"]
-        if st == "cancelled":
+        day = data["ordered_day"]
+        if o.get("acknowledgedAt"):
+            say = f"{day} 주문하신 {name}{topic_particle(name)} 이미 받으셨어요"
+        elif st == "cancelled":
             say = f"{name} 주문은 취소됐어요"
         elif st == "arrived":
             say = f"{name}{subj_particle(name)} 도착했어요. {STATUS_DESC[st]}"

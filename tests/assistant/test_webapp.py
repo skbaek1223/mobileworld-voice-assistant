@@ -197,7 +197,12 @@ def test_upload_extension(mime, ext):
 @pytest.fixture
 def neulbab_client(app_dir):
     pages = {
-        "index.html": "<html><head><title>늘밥</title></head><body>허브</body></html>",
+        "index.html": (
+            "<html><head><title>늘밥</title></head><body>허브"
+            '<p class="note variant-help">화면 디자인을 바꿔 볼 수 있어요</p>\n'
+            '<nav class="links" aria-label="디자인 고르기"><a href="index.html?variant=b">B안</a></nav>'
+            "</body></html>"
+        ),
         "login.html": "<html><head></head><body>보호자로 시작 어르신으로 시작</body></html>",
         "parent.html": "<html><head></head><body><main>어르신 화면</main></body></html>",
         "child.html": "<html><head></head><body><nav id='tabbar'></nav></body></html>",
@@ -227,6 +232,8 @@ def test_original_screens_with_widget_only_on_role_pages(neulbab_client):
     for page in ("parent.html", "child.html"):
         html = neulbab_client.get(f"/{page}").text
         assert html.count("/voice/widget.js") == 1 and "nb_code" in html
+    assert "디자인" not in home.text and "variant=b" not in home.text  # chooser removed
+    assert "neulbab_variant','a'" in home.text  # and the default design is kept
     for page in ("index.html", "login.html"):
         html = neulbab_client.get(f"/{page}").text
         assert "widget.js" not in html and "nb_code" in html  # code saved before redirect

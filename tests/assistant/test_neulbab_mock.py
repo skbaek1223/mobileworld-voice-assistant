@@ -403,3 +403,16 @@ def test_reasoning_models_and_tools_only_images():
     )
     with_screen = InAppAssistantAgent("gpt-5", "http://localhost:1")
     assert with_screen._get_user_message(img, None, None)["content"][-1]["type"] == "image_url"
+
+
+def test_finished_order_is_not_read_as_arriving_now(app, clock):
+    ok(order_as(app, "parent", "f4"))
+    clock.advance(40)
+    oid = app.orders[-1]["id"]
+    ok(app.call("parent", "acknowledge_arrival", {"order_id": oid}))
+    clock.advance(24 * 3600)  # the next day
+    res = app.call("guardian", "get_order_status")
+    data = ok(res)
+    assert data["finished"] is True and data["ordered_day"] == "어제"
+    assert data["ordered_at_text"].startswith("11월 5일")
+    assert res["say"] == "어제 주문하신 전복죽은 이미 받으셨어요"
