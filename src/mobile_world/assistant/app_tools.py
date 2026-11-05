@@ -167,19 +167,43 @@ def broadcast_tool(
     return AppTool(name, description, handler, parameters or {"type": "object", "properties": {}})
 
 
-def load_tools_file(path: str | Path, package: str) -> ToolRegistry:
-    """Load tool definitions from JSON (see docs/assistant_tools.example.json)."""
+def _agent_description(entry: dict[str, Any]) -> str:
+    """Tool description shown to the agent, plus the names of the returned fields."""
+    desc = entry["description"]
+    returns = entry.get("returns")
+    if isinstance(returns, dict) and returns:
+        desc += f" Returns data fields: {', '.join(returns)}."
+    return desc
+
+
+def load_tools_file(
+    path: str | Path, package: str | None = None, role: str | None = None
+) -> ToolRegistry:
+    """Load tool definitions from JSON.
+
+    Accepts a plain list or ``{"tools": [...]}`` (see docs/assistant_tools.example.json and
+    the 늘밥 contract docs/neulbab/tools.json). Entries may carry ``"roles": [...]``; when
+    ``role`` is given, only tools available to that role are loaded. ``package`` defaults to
+    the file's top-level ``"package"``.
+    """
     data = json.loads(Path(path).read_text(encoding="utf-8"))
     entries = data["tools"] if isinstance(data, dict) else data
+    default_pkg = package or (data.get("package") if isinstance(data, dict) else None)
     registry = ToolRegistry()
     for e in entries:
+        roles = e.get("roles")
+        if role is not None and roles is not None and role not in roles:
+            continue
         kind = e.get("type")
-        pkg = e.get("package", package)
+        pkg = e.get("package", default_pkg)
+        if not pkg:
+            raise ValueError(f"Tool '{e.get('name')}': no package given")
         params = e.get("parameters")
+        desc = _agent_description(e)
         if kind == "deeplink":
-            registry.register(deeplink_tool(e["name"], e["description"], e["uri"], pkg, params))
+            registry.register(deeplink_tool(e["name"], desc, e["uri"], pkg, params))
         elif kind == "broadcast":
-            registry.register(broadcast_tool(e["name"], e["description"], e["action"], pkg, params))
+            registry.register(broadcast_tool(e["name"], desc, e["action"], pkg, params))
         else:
             raise ValueError(f"Tool '{e.get('name')}': unsupported type '{kind}'")
     return registry

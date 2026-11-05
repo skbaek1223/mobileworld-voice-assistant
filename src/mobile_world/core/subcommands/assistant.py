@@ -37,6 +37,11 @@ def configure_parser(subparsers: argparse._SubParsersAction) -> None:
         default=None,
         help="JSON file with app tools (see docs/assistant_tools.example.json)",
     )
+    app.add_argument(
+        "--role",
+        default=None,
+        help="Only load tools for this role, e.g. parent or guardian (docs/neulbab/tools.json)",
+    )
 
     llm = p.add_argument_group("agent model (OpenAI-compatible)")
     llm.add_argument("--model-name", "--model_name", dest="model_name", required=True)
@@ -120,7 +125,11 @@ async def execute(args: argparse.Namespace) -> None:
     aw_url = env_validation(args.aw_host, device_id)
     app_name = args.app_name or args.package
 
-    tools = load_tools_file(args.tools_file, args.package) if args.tools_file else ToolRegistry()
+    tools = (
+        load_tools_file(args.tools_file, args.package, role=args.role)
+        if args.tools_file
+        else ToolRegistry()
+    )
     speech_key = args.speech_api_key or os.getenv("SPEECH_API_KEY") or os.getenv("OPENAI_API_KEY")
     stt = build_stt(
         args.stt,

@@ -42,4 +42,5 @@ uv run mw assistant --package com.example.myapp --app-name 마이앱 \
 | `src/mobile_world/core/subcommands/assistant.py` | `mw assistant` CLI |
 | `tests/assistant/` | 기기, LLM, 오디오 없이 돌아가는 테스트 |
 | `docs/` | 문서, 툴 정의 예시 |
+| `docs/neulbab/` | 늘밥 앱용 툴 계약 v0.1 ([설명](docs/neulbab/tool_contract.md), [정의](docs/neulbab/tools.json)) |
 | `patches/mobileworld.patch` | MobileWorld 원본 수정분 |

@@ -1,0 +1,351 @@
+{
+  "contract": "neulbab-assistant-tools",
+  "version": "0.1.0",
+  "date": "2026-11-05",
+  "package": "com.neulbab.app",
+  "action_prefix": "com.neulbab.app.assistant.",
+  "web_reference": "agent-company/product/app/mock_api.js (v4)",
+  "envelope": {
+    "ok": {"ok": true, "data": "<tool-specific object, see returns>", "say": "<optional easy-Korean sentence the assistant may read aloud>"},
+    "error": {"ok": false, "error": {"code": "<ERROR_CODE>", "message": "<easy-Korean sentence>"}}
+  },
+  "errors": {
+    "NOT_LOGGED_IN": "먼저 늘밥에 들어와 주세요",
+    "WRONG_ROLE": "이 일은 지금 화면에서 할 수 없어요",
+    "NO_SETTINGS": "아직 자녀분이 설정을 하지 않았어요. 자녀분께 늘밥 설정을 부탁해 주세요",
+    "INVALID_ARGUMENT": "요청을 이해하지 못했어요. 다시 말씀해 주세요",
+    "MENU_NOT_FOUND": "그런 메뉴는 없어요",
+    "MENU_NOT_ALLOWED": "그 메뉴는 지금 고르실 수 없어요. 건강이나 알레르기 조건에 맞지 않아요",
+    "ACTIVE_ORDER_EXISTS": "이미 오고 있는 주문이 있어요. 도착한 뒤에 다시 주문할 수 있어요",
+    "GUARDIAN_BLOCKED": "지금 음식이 오고 있어요. 도착하면 다시 대신 주문할 수 있어요",
+    "NO_ORDER": "아직 주문이 없어요",
+    "ORDER_MISMATCH": "말씀하신 주문을 찾지 못했어요. 주문 상태를 다시 확인할게요",
+    "CANNOT_CANCEL": "이미 음식을 만들기 시작해서 취소할 수 없어요",
+    "NOT_ARRIVED": "아직 음식이 도착하지 않았어요",
+    "CONFIRMATION_INVALID": "확인 시간이 지났어요. 처음부터 다시 해 주세요",
+    "PLATFORM_ERROR": "배달앱에 연결하지 못했어요. 잠시 뒤에 다시 해 주세요",
+    "STORAGE_ERROR": "저장하지 못했어요. 한 번 더 말씀해 주세요"
+  },
+  "tools": [
+    {
+      "name": "get_context",
+      "type": "broadcast",
+      "action": "com.neulbab.app.assistant.GET_CONTEXT",
+      "roles": ["parent", "guardian"],
+      "effect": "read",
+      "confirmation": "none",
+      "description": "Who is using the app right now and what state it is in. Call this first in a session. Returns role ('parent' = the elderly user, 'guardian' = the adult child), how to address people (parent_honorific, guardian_title), whether settings exist, whether an order is in progress, and the current local time.",
+      "parameters": {"type": "object", "properties": {}, "additionalProperties": false},
+      "returns": {
+        "role": "parent | guardian",
+        "parent_name": "string, e.g. 김순자",
+        "parent_honorific": "string used when talking about the parent, e.g. 어머님",
+        "guardian_title": "자녀분 | 따님 | 아드님 | 보호자",
+        "has_settings": "boolean",
+        "active_order_id": "string | null",
+        "health_conditions": "list of condition labels, e.g. ['혈압이 높아요']",
+        "now": "ISO-8601 local time"
+      },
+      "errors": ["NOT_LOGGED_IN"],
+      "web_ref": "getSession, loadSettings, parentHonorific, guardianTitle, getActiveOrder"
+    },
+    {
+      "name": "get_recommendations",
+      "type": "broadcast",
+      "action": "com.neulbab.app.assistant.GET_RECOMMENDATIONS",
+      "roles": ["parent", "guardian"],
+      "effect": "read",
+      "confirmation": "none",
+      "description": "Menus the user can order right now, best first. Already filtered by allergies, required tags and health conditions (never relaxed). Default: the top 3 shown on the first screen. With include_more=true also returns up to 6 further menus ('다른 메뉴'). Read at most 3 menus aloud at a time.",
+      "parameters": {
+        "type": "object",
+        "properties": {"include_more": {"type": "boolean", "description": "Also return the '다른 메뉴' list (up to 6 more)."}},
+        "additionalProperties": false
+      },
+      "returns": {
+        "menus": "list of {menu_id, name, price, price_text (e.g. '8,500원'), category_label, reason (one easy sentence)}",
+        "more_menus": "same shape, only when include_more=true",
+        "health_note": "string, e.g. '혈압을 생각해서 싱겁게 드시도록 골랐어요', or ''",
+        "disclaimer": "'의사·영양사 상담을 대신하지 않아요' when health conditions are set, else ''"
+      },
+      "errors": ["NOT_LOGGED_IN", "NO_SETTINGS"],
+      "web_ref": "recommend, moreMenus, reasonFor, healthNoteText (pa1View, pamView, ch4View)"
+    },
+    {
+      "name": "get_menu_detail",
+      "type": "broadcast",
+      "action": "com.neulbab.app.assistant.GET_MENU_DETAIL",
+      "roles": ["parent", "guardian"],
+      "effect": "read",
+      "confirmation": "none",
+      "description": "Details of one menu: description, price, and whether it can be ordered under the current settings. For the guardian role also nutrition values per serving with sources and the per-condition health check. Never give medical advice beyond what this returns.",
+      "parameters": {
+        "type": "object",
+        "properties": {"menu_id": {"type": "string", "description": "e.g. m04"}},
+        "required": ["menu_id"],
+        "additionalProperties": false
+      },
+      "returns": {
+        "menu_id": "string",
+        "name": "string",
+        "description": "string",
+        "price_text": "string",
+        "orderable": "boolean (passes allergy/tag/health filters)",
+        "not_orderable_reason": "string | null",
+        "nutrition": "guardian only: list of {label, value_text} (e.g. {'나트륨', '666mg'}); unknown values are '모름'",
+        "health_check": "guardian only: list of {condition_label, result: 기준에 맞아요 | 기준보다 많아요 | 정보가 없어서 빼 두었어요}",
+        "sources": "guardian only: list of {name, url}"
+      },
+      "errors": ["NOT_LOGGED_IN", "MENU_NOT_FOUND"],
+      "web_ref": "MENUS, passesFilter, nutritionRows, healthResultLines (ch-nutrition)"
+    },
+    {
+      "name": "prepare_order",
+      "type": "broadcast",
+      "action": "com.neulbab.app.assistant.PREPARE_ORDER",
+      "roles": ["parent", "guardian"],
+      "effect": "read",
+      "confirmation": "issues",
+      "description": "Step 1 of ordering. Checks that the menu can be ordered now and returns a confirmation_id plus the exact confirmation question to read aloud. Nothing is ordered yet. Ask the user that question with ask_user; only if they clearly agree, call place_order with the confirmation_id. As guardian this is a proxy order for the parent.",
+      "parameters": {
+        "type": "object",
+        "properties": {"menu_id": {"type": "string"}},
+        "required": ["menu_id"],
+        "additionalProperties": false
+      },
+      "returns": {
+        "confirmation_id": "string, single use, expires after expires_in_sec",
+        "expires_in_sec": "integer (120)",
+        "menu_name": "string",
+        "price_text": "string",
+        "confirm_question": "string to read aloud, e.g. '전복죽, 10,000원이에요. 자녀분 카드로 결제돼요. 주문할까요?'"
+      },
+      "errors": ["NOT_LOGGED_IN", "NO_SETTINGS", "MENU_NOT_FOUND", "MENU_NOT_ALLOWED", "ACTIVE_ORDER_EXISTS", "GUARDIAN_BLOCKED"],
+      "web_ref": "passesFilter, canGuardianOrder, pa2View / ch4View confirm screens"
+    },
+    {
+      "name": "place_order",
+      "type": "broadcast",
+      "action": "com.neulbab.app.assistant.PLACE_ORDER",
+      "roles": ["parent", "guardian"],
+      "effect": "write",
+      "confirmation": "requires",
+      "description": "Step 2 of ordering: places the (mock) order prepared by prepare_order. Only call after the user explicitly agreed to the confirm_question. The app re-checks every rule; orderedBy is set from the current role. The guardian's screen is notified of a parent's order and vice versa.",
+      "parameters": {
+        "type": "object",
+        "properties": {"confirmation_id": {"type": "string"}},
+        "required": ["confirmation_id"],
+        "additionalProperties": false
+      },
+      "returns": {
+        "order_id": "string",
+        "menu_name": "string",
+        "status": "received",
+        "eta_text": "string, e.g. '오후 12시 5분'",
+        "platform_label": "string, e.g. '가 배달앱'"
+      },
+      "say_example": "전복죽을 주문했어요. 오후 12시 5분쯤 도착해요. 자녀분께 알림이 가요",
+      "errors": ["NOT_LOGGED_IN", "CONFIRMATION_INVALID", "MENU_NOT_ALLOWED", "ACTIVE_ORDER_EXISTS", "GUARDIAN_BLOCKED", "PLATFORM_ERROR", "STORAGE_ERROR"],
+      "web_ref": "createOrder(menu, settings, now, orderedBy)"
+    },
+    {
+      "name": "get_order_status",
+      "type": "broadcast",
+      "action": "com.neulbab.app.assistant.GET_ORDER_STATUS",
+      "roles": ["parent", "guardian"],
+      "effect": "read",
+      "confirmation": "none",
+      "description": "The latest order and where it is: 접수(received) → 조리중(cooking) → 배달중(delivering) → 도착(arrived), or 취소됨(cancelled). Includes who ordered it, the arrival time and whether it can still be cancelled.",
+      "parameters": {"type": "object", "properties": {}, "additionalProperties": false},
+      "returns": {
+        "order_id": "string",
+        "menu_name": "string",
+        "status": "received | cooking | delivering | arrived | cancelled",
+        "status_label": "접수 | 조리중 | 배달중 | 도착 | 취소됨",
+        "status_desc": "easy sentence, e.g. '배달하는 분이 음식을 가지고 가고 있어요'",
+        "ordered_by": "parent | guardian",
+        "ordered_by_text": "string phrased for the current role, e.g. '따님이 주문했어요'",
+        "eta_text": "string",
+        "can_cancel": "boolean (only while received, parent role)",
+        "acknowledged": "boolean",
+        "platform_label": "string"
+      },
+      "errors": ["NOT_LOGGED_IN", "NO_ORDER"],
+      "web_ref": "getLatestOrder, getStatus, STATUS_LABELS, STATUS_DESC, orderedByText, etaText, canCancel"
+    },
+    {
+      "name": "cancel_order",
+      "type": "broadcast",
+      "action": "com.neulbab.app.assistant.CANCEL_ORDER",
+      "roles": ["parent"],
+      "effect": "write",
+      "confirmation": "none",
+      "description": "Cancel the latest order. Only possible while it is still 접수(received); once cooking has started the app refuses. Pass the order_id from get_order_status so the right order is cancelled. Confirm once with ask_user before calling ('주문을 취소할까요?').",
+      "parameters": {
+        "type": "object",
+        "properties": {"order_id": {"type": "string"}},
+        "required": ["order_id"],
+        "additionalProperties": false
+      },
+      "returns": {"order_id": "string", "status": "cancelled"},
+      "say_example": "주문을 취소했어요. 돈은 나가지 않았어요",
+      "errors": ["NOT_LOGGED_IN", "WRONG_ROLE", "NO_ORDER", "ORDER_MISMATCH", "CANNOT_CANCEL", "PLATFORM_ERROR", "STORAGE_ERROR"],
+      "web_ref": "cancelOrder(now) — parent screen PA-3 only"
+    },
+    {
+      "name": "acknowledge_arrival",
+      "type": "broadcast",
+      "action": "com.neulbab.app.assistant.ACKNOWLEDGE_ARRIVAL",
+      "roles": ["parent"],
+      "effect": "write",
+      "confirmation": "none",
+      "description": "Mark the arrived order as received by the parent ('잘 받았어요'). Only after status is arrived. This closes the order so a new one can be placed.",
+      "parameters": {
+        "type": "object",
+        "properties": {"order_id": {"type": "string"}},
+        "required": ["order_id"],
+        "additionalProperties": false
+      },
+      "returns": {"order_id": "string", "acknowledged": true},
+      "errors": ["NOT_LOGGED_IN", "WRONG_ROLE", "NO_ORDER", "ORDER_MISMATCH", "NOT_ARRIVED", "STORAGE_ERROR"],
+      "web_ref": "acknowledgeOrder(now) — PA-3 '잘 받았어요'"
+    },
+    {
+      "name": "list_orders",
+      "type": "broadcast",
+      "action": "com.neulbab.app.assistant.LIST_ORDERS",
+      "roles": ["guardian"],
+      "effect": "read",
+      "confirmation": "none",
+      "description": "Order history, newest first (guardian '주문 내역' tab).",
+      "parameters": {
+        "type": "object",
+        "properties": {"limit": {"type": "integer", "minimum": 1, "maximum": 20, "description": "default 5"}},
+        "additionalProperties": false
+      },
+      "returns": {"orders": "list of {order_id, menu_name, price_text, status_label, ordered_by_text, date_text, platform_label}"},
+      "errors": ["NOT_LOGGED_IN", "WRONG_ROLE"],
+      "web_ref": "loadOrders (CH-H)"
+    },
+    {
+      "name": "list_notifications",
+      "type": "broadcast",
+      "action": "com.neulbab.app.assistant.LIST_NOTIFICATIONS",
+      "roles": ["guardian"],
+      "effect": "read",
+      "confirmation": "none",
+      "description": "Recent notifications (guardian '알림' tab): orders placed and status changes, newest first.",
+      "parameters": {
+        "type": "object",
+        "properties": {"limit": {"type": "integer", "minimum": 1, "maximum": 20, "description": "default 5"}},
+        "additionalProperties": false
+      },
+      "returns": {"notifications": "list of {text, time_text}"},
+      "errors": ["NOT_LOGGED_IN", "WRONG_ROLE"],
+      "web_ref": "CH-N (computed from orders and STATUS_TIMES_SEC, bannerText)"
+    },
+    {
+      "name": "get_settings",
+      "type": "broadcast",
+      "action": "com.neulbab.app.assistant.GET_SETTINGS",
+      "roles": ["guardian"],
+      "effect": "read",
+      "confirmation": "none",
+      "description": "Current family settings and the allowed values for each field. Address and payment are returned only as easy labels, never as raw data.",
+      "parameters": {"type": "object", "properties": {}, "additionalProperties": false},
+      "returns": {
+        "guardian_title": "string",
+        "health_conditions": "list of {id, label}",
+        "allergies": "list of strings",
+        "preferred_categories": "list of strings",
+        "required_tags": "list of strings",
+        "preferred_tags": "list of strings",
+        "platform": "{id, label}",
+        "payment_label": "e.g. '등록한 첫째 카드'",
+        "has_address": "boolean",
+        "options": "allowed values: health_conditions[{id,label}], categories, tags, platforms[{id,label}], guardian_titles"
+      },
+      "errors": ["NOT_LOGGED_IN", "WRONG_ROLE", "NO_SETTINGS"],
+      "web_ref": "loadSettings, HEALTH_RULES, PLATFORMS, TAG_LIST, CATEGORY_ORDER, GUARDIAN_TITLES"
+    },
+    {
+      "name": "prepare_settings_change",
+      "type": "broadcast",
+      "action": "com.neulbab.app.assistant.PREPARE_SETTINGS_CHANGE",
+      "roles": ["guardian"],
+      "effect": "read",
+      "confirmation": "issues",
+      "description": "Step 1 of changing settings. Pass only the fields to change; each list replaces the whole current list (read get_settings first and send the full new list). Returns a confirmation_id and a spoken summary of the change. Address, payment, family code and accounts cannot be changed by voice.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "health_conditions": {"type": "array", "items": {"type": "string", "enum": ["hypertension", "diabetes", "kidney", "chewing"]}},
+          "allergies": {"type": "array", "items": {"type": "string"}},
+          "preferred_categories": {"type": "array", "items": {"type": "string", "enum": ["국·찌개", "생선", "죽", "고기반찬", "밥·면"]}},
+          "required_tags": {"type": "array", "items": {"type": "string", "enum": ["저염", "당뇨식", "부드러운음식", "고단백"]}},
+          "preferred_tags": {"type": "array", "items": {"type": "string", "enum": ["저염", "당뇨식", "부드러운음식", "고단백"]}},
+          "platform": {"type": "string", "enum": ["pa", "pb", "pc"]},
+          "guardian_title": {"type": "string", "enum": ["자녀분", "따님", "아드님", "보호자"]}
+        },
+        "minProperties": 1,
+        "additionalProperties": false
+      },
+      "returns": {
+        "confirmation_id": "string, single use, expires after expires_in_sec",
+        "expires_in_sec": "integer (120)",
+        "changes": "list of {field_label, before_text, after_text}",
+        "confirm_question": "e.g. '건강 상태에 혈당이 높아요를 더할게요. 바꿀까요?'",
+        "menus_after": "integer: how many menus remain orderable after the change (0 means nothing can be ordered)"
+      },
+      "errors": ["NOT_LOGGED_IN", "WRONG_ROLE", "NO_SETTINGS", "INVALID_ARGUMENT"],
+      "web_ref": "validateSettings, rankMenus (to count menus_after)"
+    },
+    {
+      "name": "apply_settings_change",
+      "type": "broadcast",
+      "action": "com.neulbab.app.assistant.APPLY_SETTINGS_CHANGE",
+      "roles": ["guardian"],
+      "effect": "write",
+      "confirmation": "requires",
+      "description": "Step 2: apply the change prepared by prepare_settings_change. Only after the guardian explicitly agreed.",
+      "parameters": {
+        "type": "object",
+        "properties": {"confirmation_id": {"type": "string"}},
+        "required": ["confirmation_id"],
+        "additionalProperties": false
+      },
+      "returns": {"updated_fields": "list of field labels"},
+      "say_example": "설정을 바꿨어요. 이제 싱거운 음식 위주로 골라 드릴게요",
+      "errors": ["NOT_LOGGED_IN", "WRONG_ROLE", "CONFIRMATION_INVALID", "STORAGE_ERROR"],
+      "web_ref": "saveSettings(s, now)"
+    },
+    {
+      "name": "open_screen",
+      "type": "broadcast",
+      "action": "com.neulbab.app.assistant.OPEN_SCREEN",
+      "roles": ["parent", "guardian"],
+      "effect": "navigate",
+      "confirmation": "none",
+      "description": "Show a screen so the user can see what you are talking about (e.g. after ordering, show the order status). parent screens: home, more_menus, order_status. guardian screens: home, orders, notifications, my, settings, nutrition. Prefer this over tapping through the GUI.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "screen": {"type": "string", "enum": ["home", "more_menus", "order_status", "orders", "notifications", "my", "settings", "nutrition"]},
+          "menu_id": {"type": "string", "description": "optional: for nutrition, scroll to this menu"}
+        },
+        "required": ["screen"],
+        "additionalProperties": false
+      },
+      "returns": {"screen": "string (the screen now shown)"},
+      "errors": ["NOT_LOGGED_IN", "WRONG_ROLE", "INVALID_ARGUMENT"],
+      "web_ref": "parent.js / child.js screen ids: pa-1, pa-m, pa-3, ch-2, ch-h, ch-n, ch-my, ch-1, ch-nutrition"
+    }
+  ],
+  "not_exposed": [
+    {"what": "로그인·회원가입·가족 코드 발급·로그아웃", "why": "계정과 세션은 사람이 직접 다룬다"},
+    {"what": "주소·결제 수단 변경", "why": "음성 오인식 위험이 크고 개인정보다. 화면에서만 바꾼다"},
+    {"what": "처음 상태로 되돌리기(resetAll)", "why": "되돌릴 수 없는 일괄 삭제"},
+    {"what": "A/B 디자인 변경", "why": "실험 조건이라 사용자가 바꾸지 않는다"},
+    {"what": "보호자의 주문 취소", "why": "웹 프로토타입에서도 취소는 어르신 화면에만 있다. 필요하면 v0.2에서 검토"}
+  ]
+}
