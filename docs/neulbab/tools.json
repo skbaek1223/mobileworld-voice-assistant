@@ -1,6 +1,6 @@
 {
   "contract": "neulbab-assistant-tools",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "date": "2026-11-05",
   "package": "com.neulbab.app",
   "action_prefix": "com.neulbab.app.assistant.",
@@ -102,6 +102,7 @@
     {
       "name": "prepare_order",
       "type": "broadcast",
+      "commit_tool": "place_order",
       "action": "com.neulbab.app.assistant.PREPARE_ORDER",
       "roles": ["parent", "guardian"],
       "effect": "read",
@@ -271,6 +272,7 @@
     {
       "name": "prepare_settings_change",
       "type": "broadcast",
+      "commit_tool": "apply_settings_change",
       "action": "com.neulbab.app.assistant.PREPARE_SETTINGS_CHANGE",
       "roles": ["guardian"],
       "effect": "read",

@@ -328,3 +328,17 @@ def test_agent_prompt_and_messages():
     assert msg["content"][0]["text"] == "Blocked: no"
     msg = agent._get_user_message(Image.new("RGB", (4, 4)), None, "네")
     assert msg["content"][0]["text"] == "User replied: 네"
+
+
+def test_unanswered_question_is_kept_in_history():
+    """A menu list ending in a question nobody answered must still reach the follow-up."""
+    session, agent, _, _ = make_session(
+        [
+            {"action_type": "ask_user", "text": "미역국, 전복죽이 있어요. 어느 걸 드실까요?"},
+            {"action_type": "answer", "text": "주문했어요"},
+        ],
+        utterances=["", ""],  # silence twice -> request ends
+    )
+    assert session.handle_request("뭐 먹을 수 있어?").status == "cancelled"
+    session.handle_request("첫 번째 걸로 해 줘")
+    assert "미역국, 전복죽이 있어요" in agent.instructions[1]

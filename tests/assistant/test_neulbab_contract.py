@@ -129,3 +129,12 @@ def test_enums_match_web_prototype():
     # error messages reused from the web app's TEXT table stay identical
     assert DATA["errors"]["NO_SETTINGS"] in mock_api
     assert DATA["errors"]["GUARDIAN_BLOCKED"] in mock_api
+
+
+def test_issuers_name_their_commit_tool():
+    for t in TOOLS.values():
+        if t["confirmation"] == "issues":
+            commit = TOOLS[t["commit_tool"]]
+            assert commit["confirmation"] == "requires" and set(t["roles"]) == set(commit["roles"])
+        else:
+            assert "commit_tool" not in t, t["name"]

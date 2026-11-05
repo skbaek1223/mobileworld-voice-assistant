@@ -360,8 +360,43 @@ def test_agent_prompt_in_tools_only_mode(app):
     assert "There is NO screen" in prompt and "talking with the parent" in prompt
     assert '"name": "prepare_order"' in prompt and "Returns data fields: confirmation_id" in prompt
     assert '"name": "get_settings"' not in prompt  # guardian-only tool not offered
+    # no screen -> no GUI actions or coordinates; examples are generic, not a calendar app
+    for gui_only in ("`click`", "`scroll`", "Coordinates:", "Scroll down", "Tools first"):
+        assert gui_only not in prompt, gui_only
+    assert "날짜" not in prompt and "회의" not in prompt
+    assert "cancelling" in prompt and prompt.count("confirm_question") >= 1
+    numbers = [
+        line.split(".")[0]
+        for line in prompt.split("# Principles\n")[1].split("\n\n")[0].splitlines()
+    ]
+    assert numbers == [str(i) for i in range(1, len(numbers) + 1)]  # numbered without gaps
 
     with_gui = InAppAssistantAgent("m", "http://localhost:1", app_name="X")._render_system_prompt(
         1000
     )
     assert "There is NO screen" not in with_gui and "talking with" not in with_gui
+
+
+def test_reasoning_models_and_tools_only_images():
+    pytest.importorskip("openai")
+    from PIL import Image
+
+    from mobile_world.assistant.agent import InAppAssistantAgent, default_runtime_conf
+
+    assert "temperature" not in default_runtime_conf("gpt-5")
+    assert "temperature" not in default_runtime_conf("openai/gpt-5-mini")
+    assert default_runtime_conf("gpt-5")["max_tokens"] >= 8000
+    assert default_runtime_conf("gpt-4.1")["temperature"] == 0.0
+    assert default_runtime_conf("gpt-5", reasoning_effort="low")["reasoning_effort"] == "low"
+    assert "reasoning_effort" not in default_runtime_conf("gpt-4.1", reasoning_effort="low")
+    assert default_runtime_conf("claude-sonnet", gui=False)["history_n_images"] == 0
+
+    img = Image.new("RGB", (4, 4))
+    no_screen = InAppAssistantAgent("gpt-5", "http://localhost:1", gui=False)
+    msg = no_screen._get_user_message(img, '{"ok": true}', None)
+    assert [c["type"] for c in msg["content"]] == ["text"]
+    assert (
+        no_screen._get_user_message(img, None, None)["content"][0]["text"] == "(no new information)"
+    )
+    with_screen = InAppAssistantAgent("gpt-5", "http://localhost:1")
+    assert with_screen._get_user_message(img, None, None)["content"][-1]["type"] == "image_url"

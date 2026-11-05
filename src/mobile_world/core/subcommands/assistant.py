@@ -55,6 +55,13 @@ def configure_parser(subparsers: argparse._SubParsersAction) -> None:
         "--api-key", "--api_key", dest="api_key", default=None, help="Defaults to $API_KEY"
     )
     llm.add_argument("--max-steps", dest="max_steps", type=int, default=20)
+    llm.add_argument(
+        "--reasoning-effort",
+        dest="reasoning_effort",
+        choices=["minimal", "low", "medium", "high"],
+        default=None,
+        help="for reasoning models such as gpt-5 (lower = faster replies)",
+    )
 
     sp = p.add_argument_group("speech")
     sp.add_argument("--language", default="ko", help="Spoken language code (default: ko)")
@@ -112,6 +119,27 @@ def configure_parser(subparsers: argparse._SubParsersAction) -> None:
         help="JSON file to keep the mock family's settings/orders between runs",
     )
 
+    fast = p.add_argument_group("latency (늘밥 mock; all on by default)")
+    fast.add_argument("--no-router", dest="router", action="store_false", help="no rule fast paths")
+    fast.add_argument(
+        "--no-prefetch", dest="prefetch", action="store_false", help="no state snapshot"
+    )
+    fast.add_argument(
+        "--no-session-confirm",
+        dest="session_confirm",
+        action="store_false",
+        help="let the agent ask confirmations itself",
+    )
+    p.add_argument(
+        "--filler-after",
+        dest="filler_after",
+        type=float,
+        default=1.0,
+        help="say a short filler if the agent is still thinking after N seconds (-1 = never)",
+    )
+    p.add_argument(
+        "--no-stream", dest="stream", action="store_false", help="speak only full replies"
+    )
     p.add_argument(
         "--once",
         default=None,
@@ -128,25 +156,38 @@ def _detect_device() -> str:
     return devices[0]
 
 
-def _build_mock(args):
+def _build_mock(args) -> dict:
+    """Pieces for a 늘밥 mock session, with the latency features chosen on the CLI."""
     from mobile_world.assistant.device import ToolsOnlyDevice
     from mobile_world.assistant.neulbab import (
-        ROLE_INSTRUCTIONS,
+        PROMPT_EXAMPLES,
         MockNeulbabApp,
         build_toolset,
         load_data,
     )
+    from mobile_world.assistant.neulbab.fast_paths import build_router
+    from mobile_world.assistant.neulbab.toolset import (
+        build_context_provider,
+        commit_tools,
+        role_instructions,
+    )
 
-    if args.role not in ROLE_INSTRUCTIONS:
+    if args.role not in ("parent", "guardian"):
         raise SystemExit("--mock-neulbab needs --role parent or --role guardian")
     app = MockNeulbabApp(load_data(args.neulbab_app_dir), state_file=args.mock_state)
     package = args.package or app.contract["package"]
-    return (
-        package,
-        ToolsOnlyDevice(package),
-        build_toolset(app, args.role),
-        ROLE_INSTRUCTIONS[args.role],
-    )
+    return {
+        "package": package,
+        "device": ToolsOnlyDevice(package),
+        "tools": build_toolset(app, args.role),
+        "instructions": role_instructions(args.role, args.prefetch, args.session_confirm),
+        "examples": PROMPT_EXAMPLES,
+        "session": {
+            "router": build_router(args.role, app.errors) if args.router else None,
+            "context_provider": build_context_provider(app, args.role) if args.prefetch else None,
+            "commit_tools": commit_tools(app, args.role) if args.session_confirm else None,
+        },
+    }
 
 
 async def execute(args: argparse.Namespace) -> None:
@@ -160,6 +201,8 @@ async def execute(args: argparse.Namespace) -> None:
     )
     from mobile_world.assistant.agent import InAppAssistantAgent
 
+    if args.filler_after is not None and args.filler_after < 0:
+        args.filler_after = None
     console = Console()
     if not args.log_verbose:
         logger.remove()
@@ -167,8 +210,16 @@ async def execute(args: argparse.Namespace) -> None:
 
     device_id = None
     extra_instructions = ""
+    examples: dict = {}
+    session_opts: dict = {}
     if args.mock_neulbab:
-        package, device, tools, extra_instructions = _build_mock(args)
+        mock = _build_mock(args)
+        package, device, tools = mock["package"], mock["device"], mock["tools"]
+        extra_instructions, examples, session_opts = (
+            mock["instructions"],
+            mock["examples"],
+            mock["session"],
+        )
         app_name = args.app_name or "늘밥"
         where = f"늘밥 mock, role={args.role}"
     else:
@@ -223,6 +274,8 @@ async def execute(args: argparse.Namespace) -> None:
         tools=tools.schemas(),
         gui=gui,
         extra_instructions=extra_instructions,
+        reasoning_effort=args.reasoning_effort,
+        **examples,
     )
     session = VoiceAssistantSession(
         agent,
@@ -235,6 +288,9 @@ async def execute(args: argparse.Namespace) -> None:
         language=args.language,
         max_steps=args.max_steps,
         tool_wait_time=0.0 if args.mock_neulbab else 1.0,
+        filler_after_sec=args.filler_after,
+        stream_speech=args.stream,
+        **session_opts,
     )
 
     console.print(
