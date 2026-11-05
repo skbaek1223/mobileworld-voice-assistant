@@ -159,7 +159,7 @@
       "id": "P14-out-of-scope",
       "role": "parent", "category": "scope",
       "turns": ["택시 좀 불러 줘"],
-      "expect": {"no_writes": true, "spoken_contains_any": [["할 수 없", "부를 수 없", "어려워", "못 ", "식사", "늘밥"]]},
+      "expect": {"no_writes": true, "spoken_contains_any": [["할 수 없", "부를 수 없", "어려워", "못 ", "식사", "늘밥", "밥마중"]]},
       "reference": [{"answer": "택시는 늘밥에서 부를 수 없어요. 늘밥은 식사 주문을 도와드려요"}]
     },
     {

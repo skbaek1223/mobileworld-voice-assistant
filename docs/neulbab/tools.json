@@ -10,9 +10,9 @@
     "error": {"ok": false, "error": {"code": "<ERROR_CODE>", "message": "<easy-Korean sentence>"}}
   },
   "errors": {
-    "NOT_LOGGED_IN": "먼저 늘밥에 들어와 주세요",
+    "NOT_LOGGED_IN": "먼저 밥마중에 들어와 주세요",
     "WRONG_ROLE": "이 일은 지금 화면에서 할 수 없어요",
-    "NO_SETTINGS": "아직 자녀분이 설정을 하지 않았어요. 자녀분께 늘밥 설정을 부탁해 주세요",
+    "NO_SETTINGS": "아직 자녀분이 설정을 하지 않았어요. 자녀분께 밥마중 설정을 부탁해 주세요",
     "INVALID_ARGUMENT": "요청을 이해하지 못했어요. 다시 말씀해 주세요",
     "MENU_NOT_FOUND": "그런 메뉴는 없어요",
     "MENU_NOT_ALLOWED": "그 메뉴는 지금 고르실 수 없어요. 건강이나 알레르기 조건에 맞지 않아요",

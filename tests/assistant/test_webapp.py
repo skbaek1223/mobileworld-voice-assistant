@@ -103,10 +103,10 @@ def test_greeting_and_state(client):
             "미역국 정식",
         ]
         say, _ = recv_until(ws, "say")
-        assert say["text"].startswith("늘밥 비서예요")
+        assert say["text"].startswith("밥마중 비서예요")
         audio, _ = recv_until(ws, "audio")
         assert audio["id"] == say["id"] and base64.b64decode(audio["data"]).startswith(
-            "MP3:늘밥".encode()
+            "MP3:밥마중".encode()
         )
 
 
@@ -203,10 +203,12 @@ def neulbab_client(app_dir):
             '<nav class="links" aria-label="디자인 고르기"><a href="index.html?variant=b">B안</a></nav>'
             "</body></html>"
         ),
-        "login.html": "<html><head></head><body>보호자로 시작 어르신으로 시작</body></html>",
         "parent.html": "<html><head></head><body><main>어르신 화면</main></body></html>",
         "child.html": "<html><head></head><body><nav id='tabbar'></nav></body></html>",
         "style.css": "body{}",
+        "mock_api.js": 'var t = "자녀분께 늘밥 설정을 부탁해 주세요"; var a = "대전시 늘밥구 행복로 12";',
+        "manifest.webmanifest": '{"name": "늘밥", "short_name": "늘밥"}',
+        "login.html": "<html><head><title>늘밥</title></head><body>늘밥에 오신 걸 환영해요</body></html>",
     }
     for name, text in pages.items():
         (app_dir / name).write_text(text, encoding="utf-8")
@@ -338,3 +340,19 @@ def test_screen_hint_reaches_the_assistant(app_dir):
         )
         recv_until(ws, "done")
     assert "Screen the user is looking at now: 이대로 주문할까요? 전복죽 10,000원" in seen[0]
+
+
+def test_service_is_served_as_bapmajung(neulbab_client):
+    login = neulbab_client.get("/login.html").text
+    assert "밥마중에 오신 걸 환영해요" in login and "늘밥" not in login
+    js = neulbab_client.get("/mock_api.js")
+    assert "자녀분께 밥마중 설정을 부탁해 주세요" in js.text and js.headers[
+        "content-type"
+    ].startswith("text/javascript")
+    assert (
+        "대전시 늘밥구" in js.text
+    )  # a made-up district in the sample address, not the service name
+    assert neulbab_client.get("/manifest.webmanifest").json() == {
+        "name": "밥마중",
+        "short_name": "밥마중",
+    }

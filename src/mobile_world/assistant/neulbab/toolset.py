@@ -20,7 +20,9 @@ PROMPT_EXAMPLES = {
 }
 
 
-def role_instructions(role: str, prefetch: bool = True, session_confirm: bool = True) -> str:
+def role_instructions(
+    role: str, prefetch: bool = True, session_confirm: bool = True, brand: str = "밥마중"
+) -> str:
     """Speaking/behaviour guidance for ``role``, matching how the session is set up."""
     state = (
         "- Each request comes with an `App state` snapshot (context, menus you may offer"
@@ -41,7 +43,7 @@ def role_instructions(role: str, prefetch: bool = True, session_confirm: bool = 
     )
     if role == "parent":
         return f"""\
-# 늘밥 — talking with the parent (어르신)
+# {brand} — talking with the parent (어르신)
 - The user is an elderly parent who may see and hear poorly and is not used to apps. Use warm, \
 polite Korean 해요체 with honorifics, short sentences, one idea per sentence, no English or \
 technical words (never say id, confirmation, tool, platform order number).
@@ -58,7 +60,7 @@ first time health is discussed.
 - Errors: read `error.message` gently, naming the menu; never retry a refused order with another \
 menu unless the parent asks."""
     return f"""\
-# 늘밥 — talking with the guardian (보호자, the adult child)
+# {brand} — talking with the guardian (보호자, the adult child)
 - The user manages their parent's meals remotely. Be concise and clear (해요체).
 {state}
 - Proxy orders: call `prepare_order`; settings: call `prepare_settings_change`. For both, {commit}.

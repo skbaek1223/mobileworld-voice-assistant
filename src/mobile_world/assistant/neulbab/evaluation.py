@@ -31,6 +31,7 @@ from zoneinfo import ZoneInfo
 from loguru import logger
 
 from mobile_world.assistant.device import ToolsOnlyDevice
+from mobile_world.assistant.neulbab import BRAND
 from mobile_world.assistant.neulbab.data import NeulbabData, load_data
 from mobile_world.assistant.neulbab.fast_paths import build_router
 from mobile_world.assistant.neulbab.mock_app import DEFAULT_CONTRACT, MockNeulbabApp
@@ -387,7 +388,7 @@ def run_task(
     flat = [] if replies and isinstance(replies[0], list) else replies
     user, tts = ScriptedUser(flat), Transcript()
     guard = AppScopeGuard(
-        app.contract["package"], app_name="늘밥", tool_names=tools.names, allow_gui=False
+        app.contract["package"], app_name=BRAND, tool_names=tools.names, allow_gui=False
     )
     session = VoiceAssistantSession(
         agent,
@@ -396,7 +397,7 @@ def run_task(
         tts,
         guard,
         tools=tools,
-        app_name="늘밥",
+        app_name=BRAND,
         max_steps=task.get("max_steps", 15),
         tool_wait_time=0.0,
         router=build_router(role, app.errors) if features["router"] else None,
@@ -486,7 +487,7 @@ def llm_factory(
             model_name=model_name,
             llm_base_url=llm_base_url,
             api_key=api_key,
-            app_name="늘밥",
+            app_name=BRAND,
             tools=tools.schemas(),
             gui=False,
             extra_instructions=role_instructions(role, f["prefetch"], f["session_confirm"]),

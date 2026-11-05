@@ -39,12 +39,13 @@ from fastapi.responses import (
     JSONResponse,
     PlainTextResponse,
     RedirectResponse,
+    Response,
 )
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
 
 from mobile_world.assistant.device import ToolsOnlyDevice
-from mobile_world.assistant.neulbab import PROMPT_EXAMPLES, MockNeulbabApp, build_toolset
+from mobile_world.assistant.neulbab import BRAND, PROMPT_EXAMPLES, MockNeulbabApp, build_toolset
 from mobile_world.assistant.neulbab.fast_paths import build_router
 from mobile_world.assistant.neulbab.toolset import (
     build_context_provider,
@@ -65,6 +66,12 @@ CODE_SNIPPET = (
     # one design only: the A/B chooser is removed, so always use the default (A)
     "localStorage.setItem('neulbab_variant','a')}catch(e){}</script>"
 )
+# The service is now called 밥마중: the prototype's own name is swapped when its files are
+# served (pages, scripts, app manifest, icon title). "늘밥구" is a made-up district in the
+# sample address, not the service name, so it is left alone.
+OLD_NAME = re.compile(r"늘밥(?!구)")
+RENAMED_TYPES = {".html": "text/html", ".js": "text/javascript", ".webmanifest": "application/manifest+json", ".svg": "image/svg+xml"}  # fmt: skip
+
 # The 늘밥 home page offers an A/B design chooser for its research study; the voice app
 # uses one design, so the chooser ("화면 디자인을 바꿔 볼 수 있어요" + A안/B안 buttons) is removed.
 DESIGN_CHOOSER = re.compile(
@@ -232,10 +239,10 @@ class Connection:
             self.stt,
             self.tts,
             AppScopeGuard(
-                app.contract["package"], app_name="늘밥", tool_names=tools.names, allow_gui=False
+                app.contract["package"], app_name=BRAND, tool_names=tools.names, allow_gui=False
             ),
             tools=tools,
-            app_name="늘밥",
+            app_name=BRAND,
             tool_wait_time=0.0,
             router=build_router(role, app.errors),
             context_provider=self._context,
@@ -336,7 +343,7 @@ def create_app(
                 model_name=cfg.model_name,
                 llm_base_url=cfg.llm_base_url,
                 api_key=cfg.api_key,
-                app_name="늘밥",
+                app_name=BRAND,
                 tools=tools.schemas(),
                 gui=False,
                 extra_instructions=role_instructions(role),
@@ -344,7 +351,7 @@ def create_app(
                 **PROMPT_EXAMPLES,
             )
 
-    app = FastAPI(title="늘밥 음성 비서")
+    app = FastAPI(title=f"{BRAND} 음성 비서")
 
     def code_ok(code: str | None) -> bool:
         return cfg.access_code is None or secrets.compare_digest(code or "", cfg.access_code)
@@ -372,9 +379,9 @@ def create_app(
                 if kind == "start":
                     conn.send(family.state(role))
                     greeting = (
-                        "늘밥 비서예요. 드시고 싶은 걸 말씀해 주세요."
+                        f"{BRAND} 비서예요. 드시고 싶은 걸 말씀해 주세요."
                         if role == "parent"
-                        else "늘밥 보호자 비서예요. 무엇을 도와드릴까요?"
+                        else f"{BRAND} 보호자 비서예요. 무엇을 도와드릴까요?"
                     )
                     conn.tts.speak(greeting)
                 elif kind == "text":
@@ -426,8 +433,13 @@ def create_app(
         target = (app_root / path).resolve()
         if not target.is_relative_to(app_root) or not target.is_file():
             return PlainTextResponse("Not found", status_code=404)
+        if target.suffix in RENAMED_TYPES and not (
+            target.suffix == ".html" and target.parent == app_root
+        ):
+            text = OLD_NAME.sub(BRAND, target.read_text(encoding="utf-8"))
+            return Response(text, media_type=RENAMED_TYPES[target.suffix] + "; charset=utf-8")
         if target.suffix == ".html" and target.parent == app_root:
-            html = target.read_text(encoding="utf-8")
+            html = OLD_NAME.sub(BRAND, target.read_text(encoding="utf-8"))
             # remember ?code=... before the page's own login redirect drops the query
             html = html.replace("<head>", "<head>" + CODE_SNIPPET, 1)
             if target.name == "index.html":

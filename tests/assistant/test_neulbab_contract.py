@@ -127,7 +127,10 @@ def test_enums_match_web_prototype():
     assert props["preferred_categories"]["items"]["enum"] == js_list("CATEGORY_ORDER")
 
     # error messages reused from the web app's TEXT table stay identical
-    assert DATA["errors"]["NO_SETTINGS"] in mock_api
+    served = mock_api.replace(
+        "늘밥 설정", "밥마중 설정"
+    )  # the web app is served under the new name
+    assert DATA["errors"]["NO_SETTINGS"] in served
     assert DATA["errors"]["GUARDIAN_BLOCKED"] in mock_api
 
 

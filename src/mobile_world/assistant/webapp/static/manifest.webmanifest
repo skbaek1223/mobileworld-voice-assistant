@@ -1,7 +1,7 @@
 {
-  "name": "늘밥 음성 비서",
-  "short_name": "늘밥 비서",
-  "description": "말로 식사를 고르고 주문하는 늘밥 비서 (연습용)",
+  "name": "밥마중 음성 비서",
+  "short_name": "밥마중 비서",
+  "description": "말로 식사를 고르고 주문하는 밥마중 비서 (연습용)",
   "lang": "ko",
   "start_url": "./",
   "scope": "./",

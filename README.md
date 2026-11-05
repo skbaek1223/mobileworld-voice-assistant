@@ -1,4 +1,4 @@
-# MobileWorld Voice Assistant
+# MobileWorld Voice Assistant — 밥마중 (구 늘밥)
 
 [MobileWorld](https://github.com/Tongyi-MAI/MobileWorld) 위에서 동작하는 **앱 내장 음성 비서**입니다.
 지정한 앱 하나 안에서만 동작합니다. 앱 기능(툴)을 우선 사용하고, 툴이 없는 작업은 화면을 보고 GUI를 조작합니다.
