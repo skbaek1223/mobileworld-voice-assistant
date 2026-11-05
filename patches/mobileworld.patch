@@ -1,0 +1,84 @@
+diff --git a/pyproject.toml b/pyproject.toml
+index 947c579..75f8842 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -53,6 +53,7 @@ dependencies = [
+ 
+ [project.optional-dependencies]
+ agents = ["openai>=1.106.1"]
++voice = ["sounddevice>=0.4.6", "faster-whisper>=1.0.0"]
+ 
+ dev = [
+     "pytest>=7.4.0",
+diff --git a/src/mobile_world/agents/implementations/general_e2e_agent.py b/src/mobile_world/agents/implementations/general_e2e_agent.py
+index 549bdd7..adc17bd 100644
+--- a/src/mobile_world/agents/implementations/general_e2e_agent.py
++++ b/src/mobile_world/agents/implementations/general_e2e_agent.py
+@@ -257,6 +257,13 @@ class GeneralE2EAgentMCP(MCPAgent):
+         # Reset history when initializing with new instruction
+         self.reset()
+ 
++    def _render_system_prompt(self, scale_factor) -> str:
++        """Render the system prompt. Subclasses may override to customize the role."""
++        return GENERAL_E2E_PROMPT_TEMPLATE.render(
++            tools="\n".join([json.dumps(tool, ensure_ascii=False) for tool in self.tools]),
++            scale_factor=scale_factor,
++        )
++
+     def _get_user_message(
+         self, img_data, tool_call_res, ask_user_response_res, instruction: str | None = None
+     ) -> dict:
+@@ -358,10 +365,7 @@ class GeneralE2EAgentMCP(MCPAgent):
+         messages = [
+             {
+                 "role": "system",
+-                "content": GENERAL_E2E_PROMPT_TEMPLATE.render(
+-                    tools="\n".join([json.dumps(tool, ensure_ascii=False) for tool in self.tools]),
+-                    scale_factor=active_scale_factor,
+-                ),
++                "content": self._render_system_prompt(active_scale_factor),
+             },
+             # UPDATED 2026-04-21: user instruction may get ignored by opus-4.7 occasionally,
+             # migrated user instruction from system prompt to user prompt!
+diff --git a/src/mobile_world/core/cli.py b/src/mobile_world/core/cli.py
+index a98e780..d4bc554 100644
+--- a/src/mobile_world/core/cli.py
++++ b/src/mobile_world/core/cli.py
+@@ -27,6 +27,7 @@ def create_parser() -> argparse.ArgumentParser:
+     subcommands.configure_env_parser(subparsers)
+     subcommands.configure_info_parser(subparsers)
+     subcommands.configure_eval_server_parser(subparsers)
++    subcommands.configure_assistant_parser(subparsers)
+ 
+     return parser
+ 
+@@ -52,6 +53,8 @@ async def async_main() -> None:
+         await subcommands.execute_info(args)
+     elif args.command == "eval-server":
+         await subcommands.execute_eval_server(args)
++    elif args.command == "assistant":
++        await subcommands.execute_assistant(args)
+     else:
+         parser.print_help()
+         sys.exit(1)
+diff --git a/src/mobile_world/core/subcommands/__init__.py b/src/mobile_world/core/subcommands/__init__.py
+index 9c3b5cf..d7d6cd4 100644
+--- a/src/mobile_world/core/subcommands/__init__.py
++++ b/src/mobile_world/core/subcommands/__init__.py
+@@ -1,5 +1,7 @@
+ """Subcommands for the MobileWorld CLI."""
+ 
++from .assistant import configure_parser as configure_assistant_parser
++from .assistant import execute as execute_assistant
+ from .device import configure_parser as configure_device_parser
+ from .device import execute as execute_device
+ from .env import configure_parser as configure_env_parser
+@@ -18,6 +20,8 @@ from .eval_server import configure_parser as configure_eval_server_parser
+ from .eval_server import execute as execute_eval_server
+ 
+ __all__ = [
++    "configure_assistant_parser",
++    "execute_assistant",
+     "configure_server_parser",
+     "execute_server",
+     "configure_eval_parser",

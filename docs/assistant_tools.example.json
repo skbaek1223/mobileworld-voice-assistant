@@ -1,0 +1,50 @@
+{
+  "tools": [
+    {
+      "type": "deeplink",
+      "name": "open_order_detail",
+      "description": "Open the detail screen of an order by its order id.",
+      "uri": "myapp://orders/{order_id}",
+      "parameters": {
+        "type": "object",
+        "properties": {"order_id": {"type": "string", "description": "Order id, e.g. A-1024"}},
+        "required": ["order_id"]
+      }
+    },
+    {
+      "type": "deeplink",
+      "name": "search_products",
+      "description": "Open the product search results for a keyword.",
+      "uri": "myapp://search?q={query}",
+      "parameters": {
+        "type": "object",
+        "properties": {"query": {"type": "string"}},
+        "required": ["query"]
+      }
+    },
+    {
+      "type": "broadcast",
+      "name": "get_recent_orders",
+      "description": "Return the user's recent orders as JSON (id, item, status, date). Read-only.",
+      "action": "com.example.myapp.assistant.GET_RECENT_ORDERS",
+      "parameters": {
+        "type": "object",
+        "properties": {"limit": {"type": "string", "description": "How many orders, default 5"}}
+      }
+    },
+    {
+      "type": "broadcast",
+      "name": "add_to_cart",
+      "description": "Add a product to the cart. Ask the user to confirm first.",
+      "action": "com.example.myapp.assistant.ADD_TO_CART",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {"type": "string"},
+          "quantity": {"type": "string", "description": "default 1"}
+        },
+        "required": ["product_id"]
+      }
+    }
+  ]
+}
