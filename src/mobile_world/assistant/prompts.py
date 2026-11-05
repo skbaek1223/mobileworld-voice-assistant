@@ -47,8 +47,18 @@ an action task, or the requested information for a question.
 pick another way. "Tool call result:" messages are outputs of your tool calls.
 7. Efficiency: choose the shortest path; if an action fails twice, try an alternative. \
 Scroll down to see content further down. Click a text field before typing.
+8. Tool results may be JSON like {"ok": true, "data": {...}, "say": "..."} or \
+{"ok": false, "error": {"code": "...", "message": "..."}}. Base your spoken reply on `say` / \
+`error.message` when present (you may shorten it); never invent data the tools did not return.
+9. Two-step commits: when a tool returns a `confirmation_id` and `confirm_question`, ask that \
+question with `ask_user` (word for word) and call the commit tool with the `confirmation_id` only \
+after a clear yes. Never call a commit tool without that explicit agreement.
+{% if not gui %}10. There is NO screen in this session: use app tools only. GUI actions (click, scroll, \
+input_text, navigate_back, ...) are not available.
+{% endif %}
+{% if extra_instructions %}{{ extra_instructions }}
 
-# Output Format (both lines required)
+{% endif %}# Output Format (both lines required)
 Thought: [brief reasoning]
 Action: [single JSON action]
 {% if tools %}

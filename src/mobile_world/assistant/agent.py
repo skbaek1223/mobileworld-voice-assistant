@@ -26,6 +26,8 @@ class InAppAssistantAgent(GeneralE2EAgentMCP):
         language: str = "ko",
         tools: list[dict] | None = None,
         runtime_conf: dict | None = None,
+        gui: bool = True,
+        extra_instructions: str = "",
         **kwargs: Any,
     ):
         super().__init__(
@@ -39,6 +41,8 @@ class InAppAssistantAgent(GeneralE2EAgentMCP):
         )
         self.app_name = app_name
         self.language = LANGUAGE_NAMES.get(language, language)
+        self.gui = gui
+        self.extra_instructions = extra_instructions
 
     def _render_system_prompt(self, scale_factor) -> str:
         return IN_APP_ASSISTANT_PROMPT.render(
@@ -46,6 +50,8 @@ class InAppAssistantAgent(GeneralE2EAgentMCP):
             language=self.language,
             tools="\n".join(json.dumps(t, ensure_ascii=False) for t in self.tools),
             scale_factor=scale_factor,
+            gui=self.gui,
+            extra_instructions=self.extra_instructions,
         )
 
     def _get_user_message(

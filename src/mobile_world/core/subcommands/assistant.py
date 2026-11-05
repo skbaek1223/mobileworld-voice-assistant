@@ -1,4 +1,9 @@
-"""`mw assistant`: run the in-app voice assistant against a phone/emulator over ADB."""
+"""`mw assistant`: run the in-app voice assistant.
+
+Two modes:
+- device (default): a phone/emulator over ADB + the MobileWorld server, GUI + app tools.
+- `--mock-neulbab`: no phone; the 늘밥 tool contract served by a headless mock app.
+"""
 
 import argparse
 import os
@@ -16,7 +21,7 @@ def configure_parser(subparsers: argparse._SubParsersAction) -> None:
         help="Run a voice assistant that operates only inside one app",
     )
     app = p.add_argument_group("app")
-    app.add_argument("--package", required=True, help="Host app package, e.g. com.example.app")
+    app.add_argument("--package", default=None, help="Host app package, e.g. com.example.app")
     app.add_argument("--app-name", "--app_name", dest="app_name", help="Display name of the app")
     app.add_argument(
         "--launch-activity",
@@ -87,6 +92,26 @@ def configure_parser(subparsers: argparse._SubParsersAction) -> None:
     dev.add_argument("--device", default=None, help="ADB device ID (default: the only device)")
     dev.add_argument("--step-wait-time", dest="step_wait_time", type=float, default=1.0)
 
+    mock = p.add_argument_group("늘밥 mock (no phone)")
+    mock.add_argument(
+        "--mock-neulbab",
+        dest="mock_neulbab",
+        action="store_true",
+        help="Run against the headless 늘밥 mock app with the docs/neulbab tool contract",
+    )
+    mock.add_argument(
+        "--neulbab-app-dir",
+        dest="neulbab_app_dir",
+        default=None,
+        help="agent-company/product/app (default: $NEULBAB_APP_DIR)",
+    )
+    mock.add_argument(
+        "--mock-state",
+        dest="mock_state",
+        default=None,
+        help="JSON file to keep the mock family's settings/orders between runs",
+    )
+
     p.add_argument(
         "--once",
         default=None,
@@ -103,6 +128,27 @@ def _detect_device() -> str:
     return devices[0]
 
 
+def _build_mock(args):
+    from mobile_world.assistant.device import ToolsOnlyDevice
+    from mobile_world.assistant.neulbab import (
+        ROLE_INSTRUCTIONS,
+        MockNeulbabApp,
+        build_toolset,
+        load_data,
+    )
+
+    if args.role not in ROLE_INSTRUCTIONS:
+        raise SystemExit("--mock-neulbab needs --role parent or --role guardian")
+    app = MockNeulbabApp(load_data(args.neulbab_app_dir), state_file=args.mock_state)
+    package = args.package or app.contract["package"]
+    return (
+        package,
+        ToolsOnlyDevice(package),
+        build_toolset(app, args.role),
+        ROLE_INSTRUCTIONS[args.role],
+    )
+
+
 async def execute(args: argparse.Namespace) -> None:
     from mobile_world.assistant import (
         AppScopeGuard,
@@ -113,23 +159,36 @@ async def execute(args: argparse.Namespace) -> None:
         load_tools_file,
     )
     from mobile_world.assistant.agent import InAppAssistantAgent
-    from mobile_world.assistant.device import MobileWorldDevice
-    from mobile_world.core.user_task_runner.prerequisite import env_cleanup, env_validation
 
     console = Console()
     if not args.log_verbose:
         logger.remove()
         logger.add(lambda m: console.print(m, end="", markup=False), level="INFO")
 
-    device_id = args.device or _detect_device()
-    aw_url = env_validation(args.aw_host, device_id)
-    app_name = args.app_name or args.package
+    device_id = None
+    extra_instructions = ""
+    if args.mock_neulbab:
+        package, device, tools, extra_instructions = _build_mock(args)
+        app_name = args.app_name or "늘밥"
+        where = f"늘밥 mock, role={args.role}"
+    else:
+        from mobile_world.assistant.device import MobileWorldDevice
+        from mobile_world.core.user_task_runner.prerequisite import env_validation
 
-    tools = (
-        load_tools_file(args.tools_file, args.package, role=args.role)
-        if args.tools_file
-        else ToolRegistry()
-    )
+        if not args.package:
+            raise SystemExit("--package is required (or use --mock-neulbab)")
+        package = args.package
+        device_id = args.device or _detect_device()
+        aw_url = env_validation(args.aw_host, device_id)
+        device = MobileWorldDevice(aw_url, device_id, step_wait_time=args.step_wait_time)
+        tools = (
+            load_tools_file(args.tools_file, package, role=args.role)
+            if args.tools_file
+            else ToolRegistry()
+        )
+        app_name = args.app_name or package
+        where = f"device={device_id}"
+
     speech_key = args.speech_api_key or os.getenv("SPEECH_API_KEY") or os.getenv("OPENAI_API_KEY")
     stt = build_stt(
         args.stt,
@@ -146,13 +205,14 @@ async def execute(args: argparse.Namespace) -> None:
         api_key=speech_key,
     )
 
-    device = MobileWorldDevice(aw_url, device_id, step_wait_time=args.step_wait_time)
+    gui = not args.mock_neulbab
     guard = AppScopeGuard(
-        package=args.package,
+        package=package,
         app_name=app_name,
         extra_packages=args.extra_packages,
         tool_names=tools.names,
         launch_activity=args.launch_activity,
+        allow_gui=gui,
     )
     agent = InAppAssistantAgent(
         model_name=args.model_name,
@@ -161,6 +221,8 @@ async def execute(args: argparse.Namespace) -> None:
         app_name=app_name,
         language=args.language,
         tools=tools.schemas(),
+        gui=gui,
+        extra_instructions=extra_instructions,
     )
     session = VoiceAssistantSession(
         agent,
@@ -172,15 +234,16 @@ async def execute(args: argparse.Namespace) -> None:
         app_name=app_name,
         language=args.language,
         max_steps=args.max_steps,
+        tool_wait_time=0.0 if args.mock_neulbab else 1.0,
     )
 
     console.print(
         f"[bold cyan]🎙  {app_name} assistant[/bold cyan] "
-        f"(stt={args.stt}, tts={args.tts}, tools={len(tools)}, device={device_id})"
+        f"(stt={args.stt}, tts={args.tts}, tools={len(tools)}, {where})"
     )
     try:
-        if not guard.is_in_scope(device.current_package()):
-            device.launch(args.package, args.launch_activity)
+        if gui and not guard.is_in_scope(device.current_package()):
+            device.launch(package, args.launch_activity)
         if args.once:
             result = session.handle_request(args.once)
             console.print(
@@ -192,4 +255,7 @@ async def execute(args: argparse.Namespace) -> None:
     except KeyboardInterrupt:
         console.print("\n[yellow]Interrupted[/yellow]")
     finally:
-        env_cleanup(device_id)
+        if device_id:
+            from mobile_world.core.user_task_runner.prerequisite import env_cleanup
+
+            env_cleanup(device_id)

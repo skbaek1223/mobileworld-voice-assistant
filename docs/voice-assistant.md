@@ -24,6 +24,7 @@
 | [`assistant/app_tools.py`](../src/mobile_world/assistant/app_tools.py) | 앱 기능을 툴로 등록. `deeplink`, `broadcast`, Python 함수 |
 | [`assistant/scope.py`](../src/mobile_world/assistant/scope.py) | `AppScopeGuard`: 홈 버튼과 다른 앱 실행을 차단하고, 앱을 벗어나면 되돌아옴 |
 | [`assistant/agent.py`](../src/mobile_world/assistant/agent.py) | `InAppAssistantAgent`: `general_e2e`를 확장해 툴 우선, 음성 답변, 확인 질문 규칙을 넣은 에이전트 |
+| [`assistant/neulbab/`](../src/mobile_world/assistant/neulbab/) | 늘밥 툴 계약을 구현한 모의 앱(웹 로직 이식), 역할별 툴과 말투 지침 |
 | [`assistant/session.py`](../src/mobile_world/assistant/session.py) | 듣기 → 실행 → 말하기 루프. 이전 대화 문맥을 기억하고, 취소와 종료 명령을 처리 |
 
 ### 동작 규칙
@@ -109,6 +110,26 @@ tools = ToolRegistry()
 def get_weather(city: str):
     return {"city": city, "temp_c": 21}
 ```
+
+## 늘밥 모의 앱으로 실행 (폰 없이)
+
+늘밥 Android 앱이 아직 없어서, [툴 계약](neulbab/tool_contract.md)을 그대로 구현한 **모의 앱**(`assistant/neulbab/`)을 두었습니다.
+추천, 건강 필터, 주문 상태, 문구 등 웹 프로토타입(`mock_api.js`)의 규칙을 Python으로 옮긴 것입니다. 폰, 에뮬레이터, MobileWorld 서버 없이 툴만으로 대화합니다.
+
+```bash
+export NEULBAB_APP_DIR=/path/to/agent-company/product/app   # 메뉴·영양·건강 데이터를 여기서 읽음
+uv run mw assistant --mock-neulbab --role parent \
+  --model-name <model> --llm-base-url <openai-compatible-url> --api-key $API_KEY \
+  --mock-state /tmp/neulbab_state.json        # 선택: 어르신 → 보호자 순서로 실행해도 주문이 이어짐
+```
+
+- `--role parent`(어르신) 또는 `--role guardian`(보호자). 역할마다 받는 툴과 말투 지침이 다릅니다.
+- 화면이 없는 모드라 GUI 동작(탭, 스크롤 등)은 가드가 막고, 에이전트에게 툴만 쓰라고 알려줍니다.
+- 데이터 파일은 이 저장소에 복사하지 않고 실행할 때 `NEULBAB_APP_DIR`에서 읽습니다.
+- 웹과 같은 시연용 시간 간격(10초마다 접수 → 조리중 → 배달중 → 도착)을 씁니다.
+
+**웹과 같은지 검증:** `tests/assistant/test_neulbab_parity.py`가 무작위 상황 300개를 원본 `mock_api.js`(Node)와 Python 양쪽에 넣고 결과를 비교합니다.
+추천 순서, 건강 판정, 상태, 알림 문구, 조사 처리까지 모두 같아야 통과합니다. `NEULBAB_APP_DIR`과 `node`가 있을 때만 실행됩니다.
 
 ## 온디바이스(앱 내장)로 옮기는 계획
 

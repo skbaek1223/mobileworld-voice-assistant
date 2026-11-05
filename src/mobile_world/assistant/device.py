@@ -126,3 +126,39 @@ class MobileWorldDevice(DeviceBackend):
 
     def back(self) -> None:
         self.shell(["input", "keyevent", "KEYCODE_BACK"])
+
+
+class ToolsOnlyDevice(DeviceBackend):
+    """No phone at all: for running the assistant against app tools only (e.g. a mock app).
+
+    The agent still receives a (blank) screenshot each turn because the agent loop expects
+    one; the guard should be created with ``allow_gui=False`` so GUI actions are refused.
+    """
+
+    def __init__(self, package: str = "", size: tuple[int, int] = (360, 640)):
+        self.package = package
+        self.size = size
+        self.executed: list[JSONAction] = []
+
+    def screenshot(self) -> Image.Image:
+        from PIL import ImageDraw
+
+        img = Image.new("RGB", self.size, "white")
+        ImageDraw.Draw(img).text((16, 16), "(no screen: tools-only session)", fill="gray")
+        return img
+
+    def execute(self, action: JSONAction) -> Image.Image:
+        self.executed.append(action)
+        return self.screenshot()
+
+    def current_package(self) -> str | None:
+        return self.package or None
+
+    def launch(self, package: str, activity: str | None = None) -> bool:
+        return True
+
+    def back(self) -> None:
+        pass
+
+    def shell(self, args: list[str], timeout: float = 20.0) -> str:
+        raise RuntimeError("ToolsOnlyDevice has no device shell")

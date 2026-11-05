@@ -32,6 +32,12 @@ uv run mw assistant --package com.example.myapp --app-name 마이앱 \
   --once "최근 주문 내역 알려줘"
 ```
 
+**폰 없이 늘밥 모의 앱으로 실행하기:** 웹 앱 데이터 폴더를 지정하면 툴만으로 대화합니다.
+```bash
+NEULBAB_APP_DIR=/path/to/agent-company/product/app uv run mw assistant --mock-neulbab --role parent \
+  --model-name <model> --llm-base-url <openai-compatible-url> --api-key $API_KEY
+```
+
 구조, 툴 정의 방법, 앱 쪽 Kotlin 예시, 폰에서 직접 실행하도록 옮기는 계획은 [docs/voice-assistant.md](docs/voice-assistant.md)에 있습니다.
 
 ## 파일
@@ -39,6 +45,7 @@ uv run mw assistant --package com.example.myapp --app-name 마이앱 \
 | 경로 | 내용 |
 |---|---|
 | `src/mobile_world/assistant/` | 음성 입출력, 기기 제어, 앱 툴, 앱 범위 가드, 에이전트, 세션 |
+| `src/mobile_world/assistant/neulbab/` | 늘밥 툴 계약을 구현한 모의 앱 (웹 `mock_api.js` 로직 이식) |
 | `src/mobile_world/core/subcommands/assistant.py` | `mw assistant` CLI |
 | `tests/assistant/` | 기기, LLM, 오디오 없이 돌아가는 테스트 |
 | `docs/` | 문서, 툴 정의 예시 |

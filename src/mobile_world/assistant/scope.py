@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING
 
 from loguru import logger
 
-from mobile_world.runtime.utils.models import MCP, NAVIGATE_HOME, OPEN_APP, JSONAction
+from mobile_world.runtime.utils.models import MCP, NAVIGATE_HOME, OPEN_APP, WAIT, JSONAction
 
 if TYPE_CHECKING:
     from mobile_world.assistant.device import DeviceBackend
@@ -37,8 +37,10 @@ class AppScopeGuard:
         transient_packages: Iterable[str] = DEFAULT_TRANSIENT_PACKAGES,
         tool_names: Iterable[str] = (),
         launch_activity: str | None = None,
+        allow_gui: bool = True,
     ):
         self.package = package
+        self.allow_gui = allow_gui
         self.app_name = app_name or package
         self.allowed = {package, *extra_packages}
         self.transient = set(transient_packages)
@@ -53,6 +55,11 @@ class AppScopeGuard:
     def check_action(self, action: JSONAction) -> str | None:
         """Return a rejection message, or None if the action may run."""
         t = action.action_type
+        if not self.allow_gui and t not in (MCP, WAIT):
+            return (
+                "Blocked: there is no screen in this session. Use the app tools, then reply "
+                "with `answer` or `ask_user`."
+            )
         if t == NAVIGATE_HOME:
             return (
                 f"Blocked: navigate_home would leave {self.app_name}. You can only operate "
