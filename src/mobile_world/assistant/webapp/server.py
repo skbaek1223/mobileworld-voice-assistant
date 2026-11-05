@@ -31,8 +31,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi.responses import (
+    FileResponse,
+    HTMLResponse,
+    JSONResponse,
+    PlainTextResponse,
+    RedirectResponse,
+)
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
 
@@ -51,6 +57,12 @@ from mobile_world.assistant.speech import SpeechToText, TextToSpeech
 STATIC_DIR = Path(__file__).with_name("static")
 ROLES = ("parent", "guardian")
 ANSWER_TIMEOUT_SEC = 20.0  # how long to wait for a reply to the assistant's question
+VOICE_PAGES = {"parent.html": "parent", "child.html": "guardian"}  # 늘밥 pages that get a mic
+CODE_SNIPPET = (
+    "<script>try{var c=new URLSearchParams(location.search).get('code');"
+    "if(c)localStorage.setItem('nb_code',c)}catch(e){}</script>"
+)
+WIDGET_TAGS = '<script src="/voice/widget.js"></script>\n'  # its CSS loads inside a shadow root
 
 
 @dataclass
@@ -68,14 +80,47 @@ class Family:
 
     def __init__(self, app: MockNeulbabApp):
         self.app = app
-        lock = threading.Lock()
+        self.lock = threading.RLock()
+        self.version = 0
+        self.connections: set[Connection] = set()
         original = app.call
 
         def locked(role, name, args=None):
-            with lock:
+            with self.lock:
                 return original(role, name, args)
 
         app.call = locked  # type: ignore[method-assign]
+
+    # ---- sync with the 늘밥 web screens (their localStorage uses the same shapes)
+    def snapshot(self) -> dict:
+        with self.lock:
+            return {
+                "type": "sync",
+                "version": self.version,
+                "settings": self.app.settings,
+                "orders": self.app.orders,
+            }
+
+    def apply_from_screen(self, settings: Any, orders: Any) -> bool:
+        """A phone changed settings/orders by tapping the 늘밥 screen: adopt them."""
+        if not (settings is None or isinstance(settings, dict)) or not isinstance(orders, list):
+            return False
+        if not all(isinstance(o, dict) and "id" in o and "createdAt" in o for o in orders):
+            return False
+        with self.lock:
+            self.app.settings = settings
+            self.app.orders = orders
+            self.app.settings_rev += 1  # pending voice confirmations are now stale
+            self.app.confirmations.clear()
+            self.app._save()
+        return True
+
+    def broadcast(self) -> None:
+        with self.lock:
+            self.version += 1
+        snap = self.snapshot()
+        for conn in list(self.connections):
+            conn.send(snap)
 
     def state(self, role: str) -> dict:
         call = self.app.call
@@ -199,6 +244,7 @@ class Connection:
             self.send({"type": "thinking"})
             result = self.session.handle_request(text)
             self.send({"type": "done", "status": result.status, "reply": result.reply})
+            self.family.broadcast()  # every phone's 늘밥 screen shows the change
             self.send(self.family.state(self.role))
         except Exception as e:  # never let a turn kill the connection
             logger.exception("turn failed")
@@ -239,8 +285,14 @@ def create_app(
     cfg: WebConfig,
     voice=None,
     agent_factory: Callable[[Any, str], Any] | None = None,
+    neulbab_app_dir: str | Path | None = None,
 ) -> FastAPI:
-    """``voice``: OpenAIVoice (or a fake in tests); ``agent_factory(tools, role)`` -> agent."""
+    """``voice``: OpenAIVoice (or a fake in tests); ``agent_factory(tools, role)`` -> agent.
+
+    With ``neulbab_app_dir`` (agent-company/product/app) the phones get the original 늘밥
+    screens, unchanged, with the voice widget added to the parent and guardian pages.
+    Without it, ``/`` is the standalone voice page. That page is always at ``/voice/``.
+    """
     if agent_factory is None:
         from mobile_world.assistant.agent import InAppAssistantAgent
 
@@ -275,6 +327,8 @@ def create_app(
             return
         await ws.accept()
         conn = Connection(ws, role, family, cfg, voice, agent_factory)
+        family.connections.add(conn)
+        conn.send(family.snapshot())
         logger.info(f"[web] {role} connected")
         try:
             while True:
@@ -297,11 +351,45 @@ def create_app(
                     conn.utterance("")
                 elif kind == "state":
                     conn.send(family.state(role))
+                elif kind == "sync_up":  # changed by tapping the 늘밥 screen
+                    if family.apply_from_screen(msg.get("settings"), msg.get("orders")):
+                        family.broadcast()
         except WebSocketDisconnect:
             pass
         finally:
+            family.connections.discard(conn)
             conn.close()
             logger.info(f"[web] {role} disconnected")
 
-    app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
+    app.mount("/voice", StaticFiles(directory=STATIC_DIR, html=True), name="voice")
+
+    if neulbab_app_dir is None:
+
+        @app.get("/")
+        def root():
+            return RedirectResponse("/voice/")
+
+        return app
+
+    app_root = Path(neulbab_app_dir).resolve()
+
+    @app.get("/")
+    def home(request: Request):
+        query = request.url.query  # keep ?code=... for the page to remember
+        return RedirectResponse("/index.html" + (f"?{query}" if query else ""))
+
+    @app.get("/{path:path}")
+    def neulbab_file(path: str):
+        target = (app_root / path).resolve()
+        if not target.is_relative_to(app_root) or not target.is_file():
+            return PlainTextResponse("Not found", status_code=404)
+        if target.suffix == ".html" and target.parent == app_root:
+            html = target.read_text(encoding="utf-8")
+            # remember ?code=... before the page's own login redirect drops the query
+            html = html.replace("<head>", "<head>" + CODE_SNIPPET, 1)
+            if target.name in VOICE_PAGES:
+                html = html.replace("</body>", WIDGET_TAGS + "</body>", 1)
+            return HTMLResponse(html)
+        return FileResponse(target)
+
     return app

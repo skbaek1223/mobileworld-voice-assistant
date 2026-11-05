@@ -81,6 +81,11 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--ssl-certfile")
     p.add_argument("--ssl-keyfile")
     p.add_argument("--log-level", default="INFO", help="DEBUG shows agent steps")
+    p.add_argument(
+        "--standalone",
+        action="store_true",
+        help="serve only the voice page at / (default: the 늘밥 screens with a voice widget)",
+    )
     args = p.parse_args(argv)
 
     import sys
@@ -96,6 +101,7 @@ def main(argv: list[str] | None = None) -> None:
     )
 
     from mobile_world.assistant.neulbab import MockNeulbabApp, load_data
+    from mobile_world.assistant.neulbab.data import resolve_app_dir
     from mobile_world.assistant.webapp.server import Family, WebConfig, create_app
     from mobile_world.assistant.webapp.voice import OpenAIVoice, VoiceConfig
 
@@ -126,7 +132,8 @@ def main(argv: list[str] | None = None) -> None:
     )
     for phrase in ("잠시만요.", "네, 또는 아니요로 말씀해 주세요."):  # instant fillers
         voice.synthesize(phrase)
-    app = create_app(family, cfg, voice)
+    app_dir = None if args.standalone else resolve_app_dir(args.neulbab_app_dir)
+    app = create_app(family, cfg, voice, neulbab_app_dir=app_dir)
 
     ip = _local_ip()
     cert = key = None
@@ -137,6 +144,8 @@ def main(argv: list[str] | None = None) -> None:
     scheme = "https" if cert else "http"
     url = f"{scheme}://{ip}:{args.port}/"
     logger.info(f"늘밥 음성 비서: {url}   접속 코드: {cfg.access_code or '(없음)'}")
+    if cfg.access_code and app_dir:
+        logger.info(f"접속 번호를 미리 넣은 주소: {url}?code={cfg.access_code}")
     if not cert:
         logger.warning("HTTP only: phones will not allow the microphone (use --self-signed)")
     uvicorn.run(

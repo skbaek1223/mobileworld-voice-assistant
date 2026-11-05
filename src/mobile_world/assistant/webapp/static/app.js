@@ -19,7 +19,7 @@ let pendingListen = false, busy = false;
 /* ---------------- start screen ---------------- */
 async function check(c) {
   try {
-    const r = await fetch("api/check?code=" + encodeURIComponent(c || ""));
+    const r = await fetch("/api/check?code=" + encodeURIComponent(c || ""));
     return await r.json();
   } catch (e) {
     return { ok: false, offline: true };
@@ -105,9 +105,8 @@ $("btn-home").addEventListener("click", () => {
 
 /* ---------------- connection ---------------- */
 function connect() {
-  const base = location.pathname.replace(/[^/]*$/, "");
-  const url = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + base +
-    "ws?role=" + role + "&code=" + encodeURIComponent(code);
+  const url = (location.protocol === "https:" ? "wss://" : "ws://") + location.host +
+    "/ws?role=" + role + "&code=" + encodeURIComponent(code);
   ws = new WebSocket(url);
   playQueue.clear();
   nextPlay = 1;
@@ -142,6 +141,8 @@ setInterval(() => onTalk && send({ type: "state" }), 5000);
 
 function handle(m) {
   switch (m.type) {
+    case "sync":  // the standalone page shows state via "state" messages instead
+      break;
     case "say":
       lastSayId = Math.max(lastSayId, m.id);
       $("said").textContent = m.text;
