@@ -262,7 +262,7 @@ def test_original_screens_with_widget_only_on_role_pages(neulbab_client):
 
 def test_app_look_is_applied_when_served(neulbab_client):
     parent = neulbab_client.get("/parent.html").text
-    assert '/voice/theme.css' in parent and parent.index("style.css") < parent.index("theme.css")
+    assert '/voice/theme.css?v=' in parent and parent.index("style.css?v=") < parent.index("theme.css")
     assert 'apple-mobile-web-app-capable' in parent and "#C2410C" in parent and "#8E3210" not in parent
     assert 'hidden>뒤로</button><span class="bm-brand">' in parent  # app header logo
     child = neulbab_client.get("/child.html").text

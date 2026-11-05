@@ -118,6 +118,10 @@ ONE_TAP_LOGIN = (
     "A.loginGuardian(acc,Date.now());location.href='child.html'},true)</script>\n"
 )
 NO_CACHE = {"Cache-Control": "no-cache"}  # phones must pick up restyled files after an update
+# Phones (iOS home-screen apps especially) keep old scripts that were served without cache
+# headers, so every page asks for its scripts and styles with a per-start version.
+ASSET_VERSION = secrets.token_hex(4)
+LOCAL_ASSET = re.compile(r'((?:src|href)=")(?!/|https?:)([^"?#]+\.(?:js|css))"')
 MENU_PHOTO_DIR = STATIC_DIR / "menus"  # real food photos (credits.json); others keep their drawing
 MENU_PIC_FN = 'function menuPic(id) { return "assets/menus/" + id + ".svg"; }'
 
@@ -148,6 +152,8 @@ def restyle_page(name: str, html: str) -> str:
     # remember ?code=... before the page's own login redirect drops the query
     html = html.replace("<head>", "<head>" + CODE_SNIPPET + FULLSCREEN_TAGS, 1)
     html = html.replace('<link rel="stylesheet" href="style.css">', THEME_TAGS, 1)
+    html = LOCAL_ASSET.sub(lambda m: f'{m.group(1)}{m.group(2)}?v={ASSET_VERSION}"', html)
+    html = html.replace('href="/voice/theme.css"', f'href="/voice/theme.css?v={ASSET_VERSION}"')
     html = BACK_BUTTON.sub(lambda m: m.group(1) + BRAND_TAG, html, count=1)
     for old, new in PRACTICE_LINES.get(name, []):
         html = html.replace(old, new)
