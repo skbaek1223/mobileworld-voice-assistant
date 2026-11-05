@@ -207,7 +207,9 @@ def neulbab_client(app_dir):
             '<html><head><meta name="theme-color" content="#8E3210">'
             '<link rel="stylesheet" href="style.css"></head><body><header class="topbar">'
             '<button type="button" class="btn" id="btn-nav-back" hidden>뒤로</button></header>'
-            '<p class="demo-notice">연습용 화면이에요</p><main>어르신 화면</main></body></html>'
+            '<p class="demo-notice">연습용 화면이에요</p><main>어르신 화면'
+            '<div class="actions" id="pam-actions" hidden><button id="pam-more">다른 거 볼래요</button>'
+            "</div></main></body></html>"
         ),
         "child.html": (
             "<html><head></head><body><nav id='tabbar'></nav>"
@@ -265,6 +267,8 @@ def test_app_look_is_applied_when_served(neulbab_client):
     assert '/voice/theme.css?v=' in parent and parent.index("style.css?v=") < parent.index("theme.css")
     assert 'apple-mobile-web-app-capable' in parent and "#C2410C" in parent and "#8E3210" not in parent
     assert 'hidden>뒤로</button><span class="bm-brand">' in parent  # app header logo
+    row = parent[parent.index('<div class="bm-pam-row">') :]
+    assert row.index("bm-pam-back") < row.index("pam-more") < row.index("</div></div>")
     child = neulbab_client.get("/child.html").text
     assert "연습용 카드" not in child
     login = neulbab_client.get("/login.html").text

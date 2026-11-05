@@ -131,6 +131,13 @@ PA3_NEW = """    if (!order || order.acknowledgedAt) { openPa1(); return; }
     const arrivedAt = order.createdAt + STATUS_TIMES_SEC[STATUS_TIMES_SEC.length - 1] * 1000;
     if (v.status === "arrived" && now() - arrivedAt >= AUTO_RESET_SEC * 1000) { actions.ack(); return; }"""
 AUTO_RESET_SEC = 30
+# "다른 메뉴" screen: "뒤로" sits right next to "다른 거 볼래요" (the top-bar copy is hidden
+# there by theme.css), so both hands-on choices are in one row at thumb height.
+PAM_ACTIONS = '<div class="actions" id="pam-actions" hidden>'
+PAM_ROW = (
+    '<div class="bm-pam-row"><button type="button" class="btn btn-big btn-secondary" id="bm-pam-back"'
+    " onclick=\"document.getElementById('btn-nav-back').click()\">뒤로</button>" + PAM_ACTIONS
+)
 MENU_PHOTO_DIR = STATIC_DIR / "menus"  # real food photos (credits.json); others keep their drawing
 MENU_PIC_FN = 'function menuPic(id) { return "assets/menus/" + id + ".svg"; }'
 
@@ -168,6 +175,10 @@ def restyle_page(name: str, html: str) -> str:
     html = LOCAL_ASSET.sub(lambda m: f'{m.group(1)}{m.group(2)}?v={ASSET_VERSION}"', html)
     html = html.replace('href="/voice/theme.css"', f'href="/voice/theme.css?v={ASSET_VERSION}"')
     html = BACK_BUTTON.sub(lambda m: m.group(1) + BRAND_TAG, html, count=1)
+    if name == "parent.html" and PAM_ACTIONS in html:
+        start = html.index(PAM_ACTIONS)
+        end = html.index("</div>", start) + len("</div>")
+        html = html[:start] + PAM_ROW + html[start + len(PAM_ACTIONS) : end] + "</div>" + html[end:]
     for old, new in PRACTICE_LINES.get(name, []):
         html = html.replace(old, new)
     if name == "index.html":

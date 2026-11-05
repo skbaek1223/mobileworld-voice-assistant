@@ -61,3 +61,11 @@ button, .btn { border-radius: 20px; }
 /* 알림 상자들도 같은 결로 */
 .child-notice { border-color: var(--bm-line); border-radius: 18px; background: var(--nb-notice-bg); }
 .health-note { color: #1E4A2B; }
+
+/* "다른 메뉴" 화면: [뒤로] [다른 거 볼래요] 한 줄. 위쪽 "뒤로"는 숨기고 로고를 보인다 */
+.bm-pam-row { display: flex; gap: 16px; align-items: stretch; margin: 0 0 24px; }
+.bm-pam-row #bm-pam-back { flex: 0 0 112px; width: 112px; margin: 0; }
+.bm-pam-row #pam-actions { flex: 1 1 auto; min-width: 0; margin: 0; }
+.bm-pam-row #pam-actions .btn { height: 100%; white-space: nowrap; }
+body:has(#pa-m:not([hidden])) #btn-nav-back { display: none; }
+body:has(#pa-m:not([hidden])) .bm-brand { display: flex; }
