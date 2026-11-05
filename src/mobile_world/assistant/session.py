@@ -26,6 +26,7 @@ The session keeps a few previous turns so follow-ups ("그거 취소해줘") hav
 from __future__ import annotations
 
 import json
+import re
 import threading
 import time
 from collections.abc import Callable
@@ -86,6 +87,33 @@ PHRASES = {
         "cancel": ("cancel", "stop", "never mind"),
     },
 }
+
+# Scripts that must never be spoken in a given reply language (models sometimes slip into
+# another language mid-answer, e.g. Qwen: "현재 음식이 오고 있어요. 도착后再下单。").
+# Latin letters are allowed (order numbers, brand names).
+_FOREIGN_SCRIPTS = {
+    "ko": re.compile(
+        "[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff"  # kana, CJK ideographs
+        "\u0400-\u04ff\u0600-\u06ff\u0e00-\u0e7f\u0900-\u097f]"  # Cyrillic, Arabic, Thai, Devanagari
+    ),
+}
+_SENTENCE_SPLIT = re.compile(r"(?<=[.?!。！？])\s*")
+
+
+def has_foreign_script(text: str, language: str) -> bool:
+    pattern = _FOREIGN_SCRIPTS.get(language)
+    return bool(pattern and pattern.search(text or ""))
+
+
+def keep_language(text: str, language: str) -> tuple[str, list[str]]:
+    """Drop sentences written (partly) in another script. Returns (clean text, dropped)."""
+    if not has_foreign_script(text, language):
+        return text, []
+    kept, dropped = [], []
+    for sentence in filter(None, (x.strip() for x in _SENTENCE_SPLIT.split(text or ""))):
+        (dropped if has_foreign_script(sentence, language) else kept).append(sentence)
+    return " ".join(kept), dropped
+
 
 # GeneralE2E maps `status` to these fixed answers; replace them with natural speech.
 _STATUS_TEXTS = {"task finished": "done", "task failed": "failed"}
@@ -190,6 +218,7 @@ class VoiceAssistantSession:
         commit_tools: dict[str, str] | None = None,
         filler_after_sec: float | None = None,
         stream_speech: bool = True,
+        language_guard: bool = True,
     ):
         self.agent = agent
         self.device = device
@@ -210,6 +239,7 @@ class VoiceAssistantSession:
         self.commit_tools = dict(commit_tools or {})
         self.filler_after_sec = filler_after_sec
         self.stream_speech = stream_speech
+        self.language_guard = language_guard
         self.history: list[TurnResult] = []
         self._dialog: list[tuple[str, str]] = []
         self._start = 0.0
@@ -249,6 +279,9 @@ class VoiceAssistantSession:
 
     def _stream_sentence(self, sentence: str) -> None:
         """Speech sink for streaming agents: speak a finished sentence right away."""
+        if self.language_guard and has_foreign_script(sentence, self.language):
+            logger.warning(f"[language] not speaking: {sentence!r}")
+            return
         self._cancel_filler()
         self._streamed += sentence + " "
         self.say(sentence)
@@ -317,6 +350,7 @@ class VoiceAssistantSession:
             "ask_user_response": None,
         }
         reply, status = self.phrases["max_steps"], "max_steps"
+        language_retries = 1
         try:
             for step in range(1, self.max_steps + 1):
                 self._emit(State.THINKING, step=step)
@@ -325,6 +359,28 @@ class VoiceAssistantSession:
                 record = StepRecord(step, prediction, action.model_dump(exclude_none=True))
                 steps.append(record)
                 logger.info(f"[step {step}] {record.action}")
+
+                if self.language_guard and action.action_type in (ANSWER, ASK_USER) and action.text:
+                    clean, dropped = keep_language(action.text, self.language)
+                    if dropped:
+                        logger.warning(f"[language] dropped {dropped}")
+                        record.action["language_dropped"] = dropped
+                        if clean:
+                            action.text = clean
+                        elif language_retries > 0:  # nothing usable left: ask once more
+                            language_retries -= 1
+                            obs = {
+                                "screenshot": self.device.screenshot(),
+                                "tool_call": "Note: your last reply was not in the user's "
+                                "language. Say it again in natural Korean only."
+                                if self.language == "ko"
+                                else "Note: reply again in the user's language only.",
+                                "ask_user_response": None,
+                            }
+                            continue
+                        else:
+                            reply, status = self.phrases["failed"], "failed"
+                            break
 
                 outcome = self._terminal_reply(prediction, action)
                 if outcome is not None:

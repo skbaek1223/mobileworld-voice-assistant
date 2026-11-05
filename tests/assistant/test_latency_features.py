@@ -407,3 +407,63 @@ def test_tool_name_as_action_type_is_accepted(monkeypatch, raw, expected):
         assert action.action_type == "unknown"  # unusable, but no crash
     else:
         assert (action.action_type, action.action_name, action.action_json) == ("mcp", *expected)
+
+
+# ------------------------------------------------------------------ language guard
+def test_keep_language_drops_only_foreign_sentences():
+    from mobile_world.assistant.session import keep_language
+
+    assert keep_language("현재 음식이 오고 있어요. 도착后再下单。", "ko") == (
+        "현재 음식이 오고 있어요.",
+        ["도착后再下单。"],
+    )
+    assert keep_language("주문번호 PA-123 이에요.", "ko") == ("주문번호 PA-123 이에요.", [])
+    assert keep_language("영양均衡且符合老年人口味", "ko")[0] == ""
+    assert keep_language("ありがとう。네, 알겠어요.", "ko") == ("네, 알겠어요.", ["ありがとう。"])
+
+
+def test_mixed_reply_is_cleaned_before_speaking(app):
+    agent = PlanAgent(
+        [{"action_type": "answer", "text": "현재 음식이 오고 있어요. 도착后再下单。"}]
+    )
+    s, tts = session_for(app, "parent", agent)
+    r = s.handle_request("또 시켜 줘")
+    assert tts.said == ["현재 음식이 오고 있어요."] and r.reply == "현재 음식이 오고 있어요."
+    assert r.steps[0].action["language_dropped"] == ["도착后再下单。"]
+
+
+def test_all_foreign_reply_is_regenerated_once(app):
+    agent = PlanAgent(
+        [
+            {"action_type": "answer", "text": "请稍等。"},
+            {"action_type": "answer", "text": "잠시만 기다려 주세요."},
+        ]
+    )
+    s, tts = session_for(app, "parent", agent)
+    r = s.handle_request("뭐 해?")
+    assert agent.calls == 2 and tts.said == ["잠시만 기다려 주세요."]
+    assert r.steps[0].action["language_dropped"] == ["请稍等。"] and r.status == "answered"
+
+    agent = PlanAgent(
+        [{"action_type": "answer", "text": "请稍等。"}, {"action_type": "answer", "text": "好的。"}]
+    )
+    s, tts = session_for(app, "parent", agent)
+    r = s.handle_request("뭐 해?")
+    assert r.status == "failed" and tts.said == ["죄송해요, 요청을 처리하지 못했어요."]
+
+
+def test_foreign_sentence_is_never_streamed(app):
+    agent = PlanAgent(
+        [{"action_type": "answer", "text": "현재 음식이 오고 있어요. 도착后再下单。"}],
+        stream=["현재 음식이 오고 있어요.", "도착后再下单。"],
+    )
+    s, tts = session_for(app, "parent", agent)
+    s.handle_request("또 시켜 줘")
+    assert tts.said == ["현재 음식이 오고 있어요."]  # spoken once, nothing in Chinese
+
+
+def test_guard_can_be_turned_off(app):
+    agent = PlanAgent([{"action_type": "answer", "text": "你好。"}])
+    s, tts = session_for(app, "parent", agent, language_guard=False)
+    s.handle_request("x")
+    assert tts.said == ["你好。"]
