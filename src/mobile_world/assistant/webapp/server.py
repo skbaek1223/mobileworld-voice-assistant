@@ -63,8 +63,9 @@ VOICE_PAGES = {"parent.html": "parent", "child.html": "guardian"}  # 늘밥 page
 CODE_SNIPPET = (
     "<script>try{var c=new URLSearchParams(location.search).get('code');"
     "if(c)localStorage.setItem('nb_code',c);"
-    # one design only: the A/B chooser is removed, so always use the default (A)
-    "localStorage.setItem('neulbab_variant','a')}catch(e){}</script>"
+    # one design only: the A/B chooser is removed and the app uses design B
+    # (one big photo card at a time), which the user picked for 밥마중
+    "localStorage.setItem('neulbab_variant','b')}catch(e){}</script>"
 )
 # The service is now called 밥마중: the prototype's own name is swapped when its files are
 # served (pages, scripts, app manifest, icon title). "늘밥구" is a made-up district in the
@@ -79,6 +80,73 @@ DESIGN_CHOOSER = re.compile(
     re.DOTALL,
 )
 WIDGET_TAGS = '<script src="/voice/widget.js"></script>\n'  # its CSS loads inside a shadow root
+
+# 밥마중 app look (design B, persimmon colours). Applied when the prototype's files are served;
+# the prototype's own files are never edited.
+THEME_COLOR = "#C2410C"
+OLD_THEME_COLOR = "#8E3210"
+THEME_TAGS = '<link rel="stylesheet" href="style.css">\n  <link rel="stylesheet" href="/voice/theme.css">'
+FULLSCREEN_TAGS = (  # open as a full-screen app from the home screen (iOS reads these metas)
+    '<meta name="apple-mobile-web-app-capable" content="yes">'
+    '<meta name="mobile-web-app-capable" content="yes">'
+    '<meta name="apple-mobile-web-app-status-bar-style" content="default">'
+    f'<meta name="apple-mobile-web-app-title" content="{BRAND}">'
+)
+BACK_BUTTON = re.compile(r'(<button[^>]*id="btn-nav-back"[^>]*>뒤로</button>)')
+BRAND_TAG = (  # app header logo; hidden by theme.css whenever the back button shows
+    f'<span class="bm-brand"><img src="/voice/brand.svg" alt="" width="44" height="44">{BRAND}</span>'
+)
+# "practice only" lines inside the guardian settings form (the rest are hidden by theme.css)
+PRACTICE_LINES = {
+    "child.html": [
+        ('<p class="field-help">연습용이라 지어낸 주소를 써도 돼요. 예를 들면 ', '<p class="field-help">예를 들면 '),
+        ('<p class="field-help">연습용 카드라 진짜 돈은 나가지 않아요</p>', ""),
+        ('<p class="field-help">연습용 배달앱이에요. 진짜 배달앱과 연결되지 않아요</p>', ""),
+    ],
+}
+CREDITS_LINK = (  # the photos are CC BY / BY-SA: credit them
+    '<p style="text-align:center;margin:0 0 32px"><a href="/voice/credits.html" style="color:#4A3828">메뉴 사진 출처</a></p>\n'
+)
+MENU_PHOTO_DIR = STATIC_DIR / "menus"  # real food photos (credits.json); others keep their drawing
+MENU_PIC_FN = 'function menuPic(id) { return "assets/menus/" + id + ".svg"; }'
+
+
+def _menu_pic_fn() -> str:
+    ids = sorted(p.stem for p in MENU_PHOTO_DIR.glob("*.jpg"))
+    return (
+        f"var BM_PHOTOS = {json.dumps(ids)};\n"
+        "function menuPic(id) { return BM_PHOTOS.indexOf(id) >= 0 ? "
+        '"/voice/menus/" + id + ".jpg" : "assets/menus/" + id + ".svg"; }'
+    )
+
+
+def restyle_text(name: str, text: str) -> str:
+    """Brand, colours and photos for the prototype's scripts and manifest."""
+    text = OLD_NAME.sub(BRAND, text)
+    if name == "mock_api.js":
+        text = text.replace(MENU_PIC_FN, _menu_pic_fn())
+    elif name == "manifest.webmanifest":
+        text = text.replace(" (연습용 화면)", "").replace(OLD_THEME_COLOR, THEME_COLOR)
+    return text
+
+
+def restyle_page(name: str, html: str) -> str:
+    """Brand, app header, theme and full-screen metas for one of the prototype's pages."""
+    html = OLD_NAME.sub(BRAND, html)
+    html = html.replace(OLD_THEME_COLOR, THEME_COLOR)
+    # remember ?code=... before the page's own login redirect drops the query
+    html = html.replace("<head>", "<head>" + CODE_SNIPPET + FULLSCREEN_TAGS, 1)
+    html = html.replace('<link rel="stylesheet" href="style.css">', THEME_TAGS, 1)
+    html = BACK_BUTTON.sub(lambda m: m.group(1) + BRAND_TAG, html, count=1)
+    for old, new in PRACTICE_LINES.get(name, []):
+        html = html.replace(old, new)
+    if name == "index.html":
+        html = DESIGN_CHOOSER.sub("", html)
+    if name == "login.html":
+        html = html.replace("</body>", CREDITS_LINK + "</body>", 1)
+    if name in VOICE_PAGES:
+        html = html.replace("</body>", WIDGET_TAGS + "</body>", 1)
+    return html
 
 
 @dataclass
@@ -436,17 +504,10 @@ def create_app(
         if target.suffix in RENAMED_TYPES and not (
             target.suffix == ".html" and target.parent == app_root
         ):
-            text = OLD_NAME.sub(BRAND, target.read_text(encoding="utf-8"))
+            text = restyle_text(target.name, target.read_text(encoding="utf-8"))
             return Response(text, media_type=RENAMED_TYPES[target.suffix] + "; charset=utf-8")
         if target.suffix == ".html" and target.parent == app_root:
-            html = OLD_NAME.sub(BRAND, target.read_text(encoding="utf-8"))
-            # remember ?code=... before the page's own login redirect drops the query
-            html = html.replace("<head>", "<head>" + CODE_SNIPPET, 1)
-            if target.name == "index.html":
-                html = DESIGN_CHOOSER.sub("", html)
-            if target.name in VOICE_PAGES:
-                html = html.replace("</body>", WIDGET_TAGS + "</body>", 1)
-            return HTMLResponse(html)
+            return HTMLResponse(restyle_page(target.name, target.read_text(encoding="utf-8")))
         return FileResponse(target)
 
     return app

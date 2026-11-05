@@ -203,11 +203,25 @@ def neulbab_client(app_dir):
             '<nav class="links" aria-label="디자인 고르기"><a href="index.html?variant=b">B안</a></nav>'
             "</body></html>"
         ),
-        "parent.html": "<html><head></head><body><main>어르신 화면</main></body></html>",
-        "child.html": "<html><head></head><body><nav id='tabbar'></nav></body></html>",
+        "parent.html": (
+            '<html><head><meta name="theme-color" content="#8E3210">'
+            '<link rel="stylesheet" href="style.css"></head><body><header class="topbar">'
+            '<button type="button" class="btn" id="btn-nav-back" hidden>뒤로</button></header>'
+            '<p class="demo-notice">연습용 화면이에요</p><main>어르신 화면</main></body></html>'
+        ),
+        "child.html": (
+            "<html><head></head><body><nav id='tabbar'></nav>"
+            '<p class="field-help">연습용 카드라 진짜 돈은 나가지 않아요</p></body></html>'
+        ),
         "style.css": "body{}",
-        "mock_api.js": 'var t = "자녀분께 늘밥 설정을 부탁해 주세요"; var a = "대전시 늘밥구 행복로 12";',
-        "manifest.webmanifest": '{"name": "늘밥", "short_name": "늘밥"}',
+        "mock_api.js": (
+            'var t = "자녀분께 늘밥 설정을 부탁해 주세요"; var a = "대전시 늘밥구 행복로 12";\n'
+            'function menuPic(id) { return "assets/menus/" + id + ".svg"; }'
+        ),
+        "manifest.webmanifest": (
+            '{"name": "늘밥", "short_name": "늘밥", "description": "가족 (연습용 화면)",'
+            ' "theme_color": "#8E3210"}'
+        ),
         "login.html": "<html><head><title>늘밥</title></head><body>늘밥에 오신 걸 환영해요</body></html>",
     }
     for name, text in pages.items():
@@ -235,7 +249,7 @@ def test_original_screens_with_widget_only_on_role_pages(neulbab_client):
         html = neulbab_client.get(f"/{page}").text
         assert html.count("/voice/widget.js") == 1 and "nb_code" in html
     assert "디자인" not in home.text and "variant=b" not in home.text  # chooser removed
-    assert "neulbab_variant','a'" in home.text  # and the default design is kept
+    assert "neulbab_variant','b'" in home.text  # and the app always uses design B
     for page in ("index.html", "login.html"):
         html = neulbab_client.get(f"/{page}").text
         assert "widget.js" not in html and "nb_code" in html  # code saved before redirect
@@ -244,6 +258,22 @@ def test_original_screens_with_widget_only_on_role_pages(neulbab_client):
     assert neulbab_client.get("/voice/widget.js").status_code == 200
     assert neulbab_client.get("/../../etc/passwd").status_code == 404
     assert neulbab_client.get("/%2e%2e/conftest.py").status_code == 404
+
+
+def test_app_look_is_applied_when_served(neulbab_client):
+    parent = neulbab_client.get("/parent.html").text
+    assert '/voice/theme.css' in parent and parent.index("style.css") < parent.index("theme.css")
+    assert 'apple-mobile-web-app-capable' in parent and "#C2410C" in parent and "#8E3210" not in parent
+    assert 'hidden>뒤로</button><span class="bm-brand">' in parent  # app header logo
+    child = neulbab_client.get("/child.html").text
+    assert "연습용 카드" not in child
+    assert "메뉴 사진 출처" in neulbab_client.get("/login.html").text
+    js = neulbab_client.get("/mock_api.js").text
+    assert 'BM_PHOTOS = ["m01"' in js and "/voice/menus/" in js and "늘밥구" in js
+    manifest = neulbab_client.get("/manifest.webmanifest").json()
+    assert manifest["description"] == "가족" and manifest["theme_color"] == "#C2410C"
+    for path in ("/voice/theme.css", "/voice/brand.svg", "/voice/menus/m01.jpg", "/voice/credits.html"):
+        assert neulbab_client.get(path).status_code == 200
 
 
 def test_screen_and_voice_stay_in_sync(neulbab_client):
@@ -352,7 +382,5 @@ def test_service_is_served_as_bapmajung(neulbab_client):
     assert (
         "대전시 늘밥구" in js.text
     )  # a made-up district in the sample address, not the service name
-    assert neulbab_client.get("/manifest.webmanifest").json() == {
-        "name": "밥마중",
-        "short_name": "밥마중",
-    }
+    manifest = neulbab_client.get("/manifest.webmanifest").json()
+    assert manifest["name"] == manifest["short_name"] == "밥마중"

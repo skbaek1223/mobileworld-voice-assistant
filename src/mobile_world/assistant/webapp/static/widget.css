@@ -1,8 +1,8 @@
 /* 늘밥 음성 위젯: 늘밥 화면 위에 떠 있는 마이크와 자막. Shadow DOM 안에서만 적용된다. */
 .nbv, .nbv * { box-sizing: border-box; }
 .nbv {
-  --nbv-brand: #8E3210;
-  --nbv-listen: #1F6F3A;
+  --nbv-brand: #C2410C;
+  --nbv-listen: #2E6B30;
   position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom));
   z-index: 2147483000; display: flex; flex-direction: column; align-items: flex-end; gap: 12px;
   font-family: -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
@@ -20,7 +20,7 @@
 .nbv-mic svg { width: 36px; height: 36px; }
 .nbv-mic.listening { background: var(--nbv-listen); animation: nbv-pulse 1.2s infinite; }
 .nbv-mic.busy { background: #6E5E50; }
-@keyframes nbv-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(31,111,58,.5); } 50% { box-shadow: 0 0 0 18px rgba(31,111,58,0); } }
+@keyframes nbv-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(46,107,48,.5); } 50% { box-shadow: 0 0 0 18px rgba(46,107,48,0); } }
 /* compact caption bar to the left of the mic: covers only the strip the mic already uses */
 .nbv { left: 16px; flex-direction: row; align-items: flex-end; justify-content: flex-end; }
 .nbv-bubble {
