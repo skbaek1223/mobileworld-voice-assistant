@@ -185,6 +185,19 @@ OPEN_B_NEW = """  let bmPage = 0;
     if (i === 0) { openPage(back ? bmPage : 0, back); return; }
     if (current === "pa-1") { openPage(bmPage + 1); return; }
 """
+# Time left until the meal arrives, shown under the status sentence on both role screens
+# (minutes rounded up like the voice answer; short enough for one line at 26px).
+REMAINING_LINE = (
+    "<script>setInterval(function(){var A=window.NeulbapAPI;"
+    "var st=document.querySelector('[data-testid=\"order-status\"]');if(!A||!st)return;"
+    "var el=document.getElementById('bm-remaining');if(!el){el=document.createElement('p');"
+    "el.id='bm-remaining';el.className='bm-remaining';st.insertAdjacentElement('afterend',el)}"
+    "var o=A.getLatestOrder(),now=Date.now(),s=o&&A.getStatus(o,now),"
+    "ms=o?o.createdAt+STATUS_TIMES_SEC[STATUS_TIMES_SEC.length-1]*1000-now:0;"
+    "if(!o||o.acknowledgedAt||s==='cancelled'||s==='arrived'||ms<=0||st.hidden){el.hidden=true;return}"
+    "var m=Math.ceil(ms/60000);el.textContent=m<=1?'1분 안에 도착해요':'약 '+m+'분 뒤 도착해요';"
+    "el.hidden=false},1000)</script>\n"
+)
 MENU_PHOTO_DIR = STATIC_DIR / "menus"  # real food photos (credits.json); others keep their drawing
 MENU_PIC_FN = 'function menuPic(id) { return "assets/menus/" + id + ".svg"; }'
 
@@ -256,6 +269,7 @@ def restyle_page(name: str, html: str) -> str:
                             'src="/voice/role-parent.svg" width="72" height="72" alt="어르신 그림"')
         html = html.replace("</body>", ONE_TAP_LOGIN + "</body>", 1)
     if name in VOICE_PAGES:
+        html = html.replace("</body>", REMAINING_LINE + "</body>", 1)
         widget = WIDGET_TAGS.replace("widget.js", f"widget.js?v={ASSET_VERSION}")
         html = html.replace("</body>", widget + "</body>", 1)
     return html

@@ -1,6 +1,6 @@
 {
   "contract": "neulbab-assistant-tools",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "date": "2026-11-05",
   "package": "com.neulbab.app",
   "action_prefix": "com.neulbab.app.assistant.",
@@ -167,6 +167,8 @@
         "ordered_by": "parent | guardian",
         "ordered_by_text": "string phrased for the current role, e.g. '따님이 주문했어요'",
         "eta_text": "string",
+        "minutes_left": "integer: whole minutes until arrival, rounded up (0 once arrived) (v0.5)",
+        "remaining_text": "e.g. '9분쯤 남았어요. 낮 12시 40분쯤 도착해요' or '곧 도착해요. 1분도 안 남았어요'; empty once arrived (v0.5)",
         "can_cancel": "boolean (only while received, parent role)",
         "acknowledged": "boolean",
         "platform_label": "string",

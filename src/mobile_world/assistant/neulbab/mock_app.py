@@ -395,6 +395,8 @@ class MockNeulbabApp:
             "ordered_by": self.logic.ordered_by_of(o),
             "ordered_by_text": by_text,
             "eta_text": self.logic.eta_text(o),
+            "minutes_left": self.logic.minutes_left(o, now),
+            "remaining_text": self.logic.remaining_text(o, now),
             "can_cancel": role == "parent" and self.logic.can_cancel(o, now),
             "acknowledged": bool(o.get("acknowledgedAt")),
             "platform_label": self._platform_label(o.get("platform")),
@@ -413,7 +415,7 @@ class MockNeulbabApp:
         elif st == "arrived":
             say = f"{name}{subj_particle(name)} 도착했어요. {STATUS_DESC[st]}"
         else:
-            say = f"{name}{copula(name)}. 지금은 {STATUS_LABELS[st]} 단계예요. {STATUS_DESC[st]}. {data['eta_text']}쯤 도착해요"
+            say = f"{name}{copula(name)}. 지금은 {STATUS_LABELS[st]} 단계예요. {STATUS_DESC[st]}. {data['remaining_text']}"
         return data, say
 
     def tool_cancel_order(self, role: str, order_id: str) -> tuple[dict, str | None]:

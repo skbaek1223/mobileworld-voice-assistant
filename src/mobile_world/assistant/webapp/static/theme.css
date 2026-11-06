@@ -131,3 +131,9 @@ ol.steps .step-current[data-step="arrived"] .step-label { color: #1E4A2B; }
 #pa-1 .actions .btn { width: auto; flex: 1 1 0; white-space: nowrap; }
 #pa-1 .actions #bm-pa1-back { flex: 0 0 132px; }
 #pa-1 .b-position { display: none !important; }  /* 버튼이 위로 올라오게: 쪽 번호는 생략 */
+
+/* 도착까지 남은 시간: 상태 문장 바로 아래, 크고 굵게 */
+.bm-remaining {
+  display: inline-block; margin: 4px 0 12px; padding: 8px 18px; border-radius: 18px;
+  font-size: 26px; font-weight: 900; color: #FFFFFF; background: #C2410C;
+}

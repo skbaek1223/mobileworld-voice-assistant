@@ -467,3 +467,20 @@ def test_guard_can_be_turned_off(app):
     s, tts = session_for(app, "parent", agent, language_guard=False)
     s.handle_request("x")
     assert tts.said == ["你好。"]
+
+
+@pytest.mark.parametrize("text", ["배달 얼마나 남았어?", "몇 분 남았어", "언제쯤 와?", "얼마나 더 기다려야 돼"])
+def test_router_says_minutes_left(app, text):
+    app.logic.status_times = (0, 600, 1200, 1800)  # a real delivery: 30 minutes
+    prep = app.call("parent", "prepare_order", {"menu_id": "f1"})["data"]
+    app.call("parent", "place_order", {"confirmation_id": prep["confirmation_id"]})
+    app.clock.t += 21 * 60_000  # delivering, 9 minutes to go
+    agent = PlanAgent([{"action_type": "answer", "text": "LLM"}])
+    s, _ = session_for(app, "parent", agent, router=build_router("parent", app.errors))
+    r = s.handle_request(text)
+    assert r.routed and agent.calls == 0
+    assert r.reply.startswith("지금은 배달중 단계예요. 9분쯤 남았어요.") and "쯤 도착해요" in r.reply
+    app.clock.t += 8 * 60_000 + 30_000  # 30 s left
+    assert "1분도 안 남았어요" in s.handle_request(text).reply
+    app.clock.t += 60_000  # arrived: no minutes, just that it has come
+    assert "도착했어요" in s.handle_request(text).reply

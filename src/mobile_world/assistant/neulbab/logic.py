@@ -177,6 +177,20 @@ class NeulbabLogic:
     def eta_text(self, order: dict) -> str:
         return self.format_time(order["createdAt"] + self.status_times[-1] * 1000)
 
+    def minutes_left(self, order: dict, now: int) -> int:
+        """Whole minutes until arrival, rounded up (0 once it has arrived)."""
+        ms = order["createdAt"] + self.status_times[-1] * 1000 - now
+        return max(0, -(-ms // 60000))
+
+    def remaining_text(self, order: dict, now: int) -> str:
+        """'25분쯤 남았어요. 낮 12시 40분쯤 도착해요' / '곧 도착해요. 1분도 안 남았어요' / ''."""
+        m = self.minutes_left(order, now)
+        if m == 0:
+            return ""
+        if m == 1:
+            return "곧 도착해요. 1분도 안 남았어요"
+        return f"{m}분쯤 남았어요. {self.eta_text(order)}쯤 도착해요"
+
     # ---- people
     @staticmethod
     def parent_honorific(settings: dict | None) -> str:

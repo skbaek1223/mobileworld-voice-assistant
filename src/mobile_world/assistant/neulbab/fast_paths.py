@@ -21,6 +21,8 @@ _RECOMMEND = re.compile(r"뭐\s*(먹|드|있)|배고파|메뉴\s*(뭐|알려|추
 _STATUS = re.compile(
     r"언제\s*(와|오|도착)|어디쯤|도착했|주문\s*어떻게|밥\s*어떻게|어떻게\s*됐|오고\s*있|왔(어|나|니)\s*\??$"
 )
+# "how long until it comes?" -> answer with the minutes left first
+_REMAINING = re.compile(r"얼마나\s*(더\s*)?(남|걸|기다|있어야|있으면)|몇\s*분|언제쯤|아직\s*멀|금방\s*와")
 _WHO = re.compile(r"누가.{0,6}(시켰|주문)")
 _CANCEL = re.compile(r"취소\s*(해|할|좀|하고)")
 _ACK = re.compile(r"잘\s*받았|받았어|받았습니다")
@@ -82,6 +84,13 @@ def build_router(role: str, errors: dict[str, str]) -> Route:
         if _WHO.search(text):
             st = status(ctx)
             return st["data"]["ordered_by_text"] if st.get("ok") else _say(st)
+
+        if _REMAINING.search(text):
+            st = status(ctx)
+            d = st.get("data") or {}
+            if st.get("ok") and not d.get("finished") and d.get("remaining_text"):
+                return f"지금은 {d['status_label']} 단계예요. {d['remaining_text']}."
+            return _say(st)
 
         if _STATUS.search(text):
             return _say(status(ctx))
