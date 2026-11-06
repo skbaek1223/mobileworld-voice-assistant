@@ -13,6 +13,7 @@
 
   const ROLE = /child\.html$/.test(location.pathname) ? "guardian" : "parent";
   const HANDS_FREE = ROLE === "parent";
+  const VOICE = ROLE === "parent";  // 보호자 screens: no mic or captions, only the family sync
   const KEYS = { settings: "neulbab_settings", orders: "neulbab_orders" };
   const VAD = { threshold: 0.025, ambientThreshold: 0.035, endSilenceMs: 1200, noSpeechMs: 7000, maxMs: 15000 };
   const ls = {
@@ -73,6 +74,7 @@
     // when both roles are logged in on the same browser — otherwise it bounces straight
     // back here. Send it to the first screen (보호자/어르신 선택) instead.
     document.querySelectorAll('a[data-testid="home-button"]').forEach((a) => a.setAttribute("href", "login.html"));
+    if (!VOICE) return;  // keep syncing with the server, but show no voice controls
     const spacer = document.createElement("div");  // lets the last item scroll above the mic
     spacer.style.height = "112px";
     spacer.setAttribute("aria-hidden", "true");

@@ -256,7 +256,8 @@ def restyle_page(name: str, html: str) -> str:
                             'src="/voice/role-parent.svg" width="72" height="72" alt="어르신 그림"')
         html = html.replace("</body>", ONE_TAP_LOGIN + "</body>", 1)
     if name in VOICE_PAGES:
-        html = html.replace("</body>", WIDGET_TAGS + "</body>", 1)
+        widget = WIDGET_TAGS.replace("widget.js", f"widget.js?v={ASSET_VERSION}")
+        html = html.replace("</body>", widget + "</body>", 1)
     return html
 
 
