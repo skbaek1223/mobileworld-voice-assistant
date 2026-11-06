@@ -16,8 +16,9 @@ from loguru import logger
 
 # How the assistant should sound (gpt-4o-mini-tts follows free-text instructions).
 ELDER_VOICE = (
-    "Speak Korean warmly and politely, a little slower than usual, clearly pronouncing menu "
-    "names, prices and times, like a kind helper talking to an elderly parent."
+    "Speak Korean in a soft, gentle, smiling voice, like a caring granddaughter talking to her "
+    "grandmother. Calm and unhurried, slightly slower than normal, with clear pronunciation and "
+    "small natural pauses between sentences. Never sound robotic or like an announcement."
 )
 MIME_EXT = {
     "audio/webm": "webm",
@@ -34,7 +35,7 @@ MIME_EXT = {
 class VoiceConfig:
     stt_model: str = "gpt-4o-mini-transcribe"
     tts_model: str = "gpt-4o-mini-tts"
-    tts_voice: str = "coral"
+    tts_voice: str = "nova"  # picked by the user from voice samples (2026-11-06)
     tts_instructions: str = ELDER_VOICE
     language: str = "ko"
     fallback_tts_model: str = "tts-1"
