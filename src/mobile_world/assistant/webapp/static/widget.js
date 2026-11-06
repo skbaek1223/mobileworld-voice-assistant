@@ -156,34 +156,16 @@
     const sec = id && document.getElementById(id);
     if (!sec) return null;
     if (id === "pa-1" || id === "pa-m") {
-      // Offer the menus one at a time: "들깨미역국 정식 어떠세요? … 네라고 답해 주세요".
-      // 네 -> that menu's card (then the confirm screen asks once more), 아니요 -> the next one,
-      // then the next three ("다른 메뉴 보기"). Anything else goes to the assistant as usual.
+      // "어르신, 오늘 뭐 드실래요? A, B, C이 있어요. 드시고 싶은 음식을 말씀해 주시거나 그림을 눌러 주세요."
+      // What 어르신 say next goes to the assistant ("미역국 줘", "다른 거 있어?").
       const title = txt(id === "pa-1" ? "pa1-title" : "pam-title");
       const names = menuNames(sec);
       const empty = txt(id === "pa-1" ? "pa1-empty" : "pam-empty");
-      const listKey = id + "|" + names.join(",");
-      if (listKey !== offerList) { offerList = listKey; offer = 0; }
-      const hint = join([title, txt("health-note"), listSentence(names), empty]);
-      if (!names.length) return { key: id + "|" + hint, speak: hint, hint: hint };
-      const name = names[offer];
-      const topic = name + (hasBatchim(name) === false ? "는" : "은");
-      const speak = offer === 0
-        ? join([title, txt("health-note"), listSentence(names), "먼저 " + name + " 어떠세요?",
-          "드시고 싶으시면 네라고 답해 주시거나 그림을 눌러 주세요"])
-        : join(["그럼 " + topic + " 어떠세요?", "드시고 싶으시면 네라고 답해 주세요"]);
+      const body = join([title, txt("health-note"), listSentence(names), empty]);
       return {
-        key: listKey + "|" + offer, speak: speak, hint: hint,
-        local: {
-          yes: () => {
-            const cards = Array.from(sec.querySelectorAll('[data-testid="menu-card"]')).filter(visible);
-            if (cards[offer]) cards[offer].click();
-          },
-          no: () => {
-            if (offer + 1 < names.length) { offer += 1; return; }
-            if (!click("#more-menus") && !click("#pam-more")) offer = 0;  // no more: start over
-          },
-        },
+        key: id + "|" + body,
+        speak: join([body, names.length ? "드시고 싶은 음식을 말씀해 주시거나 그림을 눌러 주세요" : ""]),
+        hint: body,
       };
     }
     if (id === "pa-2") {
@@ -259,7 +241,6 @@
     send({ type: "sync_up", settings: settings, orders: orders });
   }, 700);
 
-  let offer = 0, offerList = "";  // which menu on the screen is being offered by voice
   let localIntent = null;  // 네/아니요 handlers of the screen the words were spoken on
   function handle(m) {
     switch (m.type) {
