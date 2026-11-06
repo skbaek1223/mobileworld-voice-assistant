@@ -161,3 +161,10 @@ ol.steps .step-current[data-step="arrived"] .step-label { color: #1E4A2B; }
 /* "대신 주문하기": "내가 대신 주문했어요"와 같은 쑥색 */
 #guardian-order-start { background: #B5DCAF; border-color: #6E9E68; color: #241710; box-shadow: 0 6px 0 #6E9E68; }
 #guardian-order-start:active { box-shadow: 0 2px 0 #6E9E68; }
+
+/* 흰 버튼 대신 색 있는 버튼: 보조 버튼 = 버터색, 취소 = 연분홍 (글씨는 진하게, 대비 4.5:1 이상) */
+.btn-secondary { background: #FFE7A3; border-color: #B8862B; color: #241710; box-shadow: 0 4px 0 #B8862B; }
+.btn-secondary:active { box-shadow: 0 1px 0 #B8862B; }
+.btn-danger { background: #FDE2DE; border-color: #9E1F18; color: #7A1712; box-shadow: 0 4px 0 #9E1F18; }
+.btn-danger:active { box-shadow: 0 1px 0 #9E1F18; }
+.topbar .btn-secondary { box-shadow: none; }
