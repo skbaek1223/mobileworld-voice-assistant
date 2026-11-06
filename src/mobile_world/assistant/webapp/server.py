@@ -191,6 +191,7 @@ def restyle_page(name: str, html: str) -> str:
         html = DESIGN_CHOOSER.sub("", html)
     if name == "login.html":
         html = re.sub(r'<span class="role-sub">[^<]*</span>', "", html)  # role buttons: name only
+        html = html.replace(f"{BRAND}에 오신 걸 환영해요", "따뜻한 밥 한 끼,<br>가족이 챙겨 드려요")
         # 어르신 first: they are the main users
         g = re.search(r'<button[^>]*id="login-role-guardian".*?</button>', html, re.S)
         pa = re.search(r'<button[^>]*id="login-role-parent".*?</button>', html, re.S)

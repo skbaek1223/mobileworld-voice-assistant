@@ -396,7 +396,8 @@ def test_screen_hint_reaches_the_assistant(app_dir):
 
 def test_service_is_served_as_bapmajung(neulbab_client):
     login = neulbab_client.get("/login.html").text
-    assert "밥마중에 오신 걸 환영해요" in login and "늘밥" not in login
+    assert "<title>밥마중</title>" in login and "늘밥" not in login
+    assert "가족이 챙겨 드려요" in login and "환영" not in login  # catchphrase instead of the welcome line
     js = neulbab_client.get("/mock_api.js")
     assert "자녀분께 밥마중 설정을 부탁해 주세요" in js.text and js.headers[
         "content-type"
