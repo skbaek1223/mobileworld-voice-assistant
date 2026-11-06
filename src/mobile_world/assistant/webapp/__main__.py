@@ -67,7 +67,7 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--env-file", help="file with OPENAI_API_KEY=... (default: $OPENAI_API_KEY)")
     p.add_argument("--stt-model", default="gpt-4o-mini-transcribe")
     p.add_argument("--tts-model", default="gpt-4o-mini-tts")
-    p.add_argument("--tts-voice", default="nova")
+    p.add_argument("--tts-voice", default="cedar")
     p.add_argument("--neulbab-app-dir", default=None, help="default: $NEULBAB_APP_DIR")
     p.add_argument("--state-file", default=None, help="keep the family's orders/settings here")
     p.add_argument("--access-code", default=None, help="default: a random 6-digit code")

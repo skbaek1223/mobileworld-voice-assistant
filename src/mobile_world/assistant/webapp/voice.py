@@ -35,7 +35,7 @@ MIME_EXT = {
 class VoiceConfig:
     stt_model: str = "gpt-4o-mini-transcribe"
     tts_model: str = "gpt-4o-mini-tts"
-    tts_voice: str = "nova"  # picked by the user from voice samples (2026-11-06)
+    tts_voice: str = "cedar"  # picked by the user from voice samples (2026-11-06)
     tts_instructions: str = ELDER_VOICE
     language: str = "ko"
     fallback_tts_model: str = "tts-1"
