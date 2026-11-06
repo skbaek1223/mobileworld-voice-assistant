@@ -169,7 +169,8 @@
       const name = names[offer];
       const topic = name + (hasBatchim(name) === false ? "는" : "은");
       const speak = offer === 0
-        ? join([title, txt("health-note"), name + " 어떠세요?", "드시고 싶으시면 네라고 답해 주시거나 그림을 눌러 주세요"])
+        ? join([title, txt("health-note"), listSentence(names), "먼저 " + name + " 어떠세요?",
+          "드시고 싶으시면 네라고 답해 주시거나 그림을 눌러 주세요"])
         : join(["그럼 " + topic + " 어떠세요?", "드시고 싶으시면 네라고 답해 주세요"]);
       return {
         key: listKey + "|" + offer, speak: speak, hint: hint,
