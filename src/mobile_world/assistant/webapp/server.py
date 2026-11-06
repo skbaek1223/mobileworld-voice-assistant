@@ -144,6 +144,14 @@ ICON_FILES = {
     "assets/app_icon_192.png": "app-icon-192.png",
     "assets/app_icon_512.png": "app-icon-512.png",
 }
+# Warmer, more polite words for 어르신 on the one-card menu screens (the voice guide reads
+# these titles aloud too)
+MENU_TITLES = [
+    ('"오늘 이 메뉴 어떠세요?"', '"오늘은 이 음식 한번 드셔 보시겠어요?"'),
+    ('"이 메뉴는 어떠세요?"', '"이 음식도 한번 드셔 보시겠어요?"'),
+    ('"이게 마지막 메뉴예요. 뒤로 버튼을 누르면 앞의 메뉴를 다시 볼 수 있어요"',
+     '"이게 마지막 음식이에요. 앞의 음식을 다시 보시려면 뒤로 버튼을 눌러 주세요"'),
+]
 MENU_PHOTO_DIR = STATIC_DIR / "menus"  # real food photos (credits.json); others keep their drawing
 MENU_PIC_FN = 'function menuPic(id) { return "assets/menus/" + id + ".svg"; }'
 
@@ -162,6 +170,8 @@ def restyle_text(name: str, text: str) -> str:
     text = OLD_NAME.sub(BRAND, text)
     if name == "mock_api.js":
         text = text.replace(MENU_PIC_FN, _menu_pic_fn())
+        for old, new in MENU_TITLES:
+            text = text.replace(old, new)
     elif name == "parent.js":
         if PA3_OLD not in text:
             logger.warning("parent.js changed: the order screen will not reset by itself")

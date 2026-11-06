@@ -157,12 +157,13 @@
       const title = txt(id === "pa-1" ? "pa1-title" : "pam-title");
       const names = menuNames(sec);
       const empty = txt(id === "pa-1" ? "pa1-empty" : "pam-empty");
-      const body = join([title, txt("health-note"), listSentence(names), empty]);
-      return {
-        key: id + "|" + body,
-        speak: join([body, names.length ? "드시고 싶은 걸 말씀하시거나 그림을 눌러 주세요" : ""]),
-        hint: body,
-      };
+      // one big card (design B): name the dish, then a gentle prompt
+      const one = names.length === 1;
+      const dish = one ? names[0] + (hasBatchim(names[0]) === false ? "예요" : "이에요") : listSentence(names);
+      const body = join([title, txt("health-note"), dish, empty]);
+      const ask = one ? "드시고 싶으시면 말씀해 주시거나, 사진을 눌러 주세요"
+        : (names.length ? "드시고 싶은 걸 말씀하시거나 사진을 눌러 주세요" : "");
+      return { key: id + "|" + body, speak: join([body, ask]), hint: body };
     }
     if (id === "pa-2") {
       const body = join(["이대로 주문할까요?", txt("pa2-menu"), txt("pa2-price"), txt("pa2-payment")]);
