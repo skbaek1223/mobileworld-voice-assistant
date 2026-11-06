@@ -550,10 +550,14 @@ def create_app(
 
     app_root = Path(neulbab_app_dir).resolve()
 
+    # The app always starts on the role screen (login.html). The prototype's index.html is a
+    # demo hub ("누가 쓰실 화면인가요?") shown when both roles are signed in on one phone, which
+    # one-tap sign-in makes common, so it is never shown.
     @app.get("/")
+    @app.get("/index.html")
     def home(request: Request):
         query = request.url.query  # keep ?code=... for the page to remember
-        return RedirectResponse("/index.html" + (f"?{query}" if query else ""))
+        return RedirectResponse("/login.html" + (f"?{query}" if query else ""))
 
     @app.get("/{path:path}")
     def neulbab_file(path: str):

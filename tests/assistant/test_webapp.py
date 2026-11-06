@@ -11,7 +11,7 @@ pytest.importorskip("httpx")
 from fastapi.testclient import TestClient
 
 from mobile_world.assistant.neulbab import MockNeulbabApp, load_data
-from mobile_world.assistant.webapp.server import Family, WebConfig, create_app
+from mobile_world.assistant.webapp.server import Family, WebConfig, create_app, restyle_page
 from mobile_world.assistant.webapp.voice import extension_for
 from mobile_world.runtime.utils.models import JSONAction
 
@@ -243,20 +243,22 @@ def neulbab_client(app_dir):
     )
     with TestClient(web) as c:
         c.family = family
+        c.app_dir = app_dir
         yield c
 
 
 def test_original_screens_with_widget_only_on_role_pages(neulbab_client):
     home = neulbab_client.get("/?code=123456")
-    assert (
-        home.url.path == "/index.html" and home.url.query == b"code=123456" and "허브" in home.text
-    )
+    assert home.url.path == "/login.html" and home.url.query == b"code=123456"
+    hub = neulbab_client.get("/index.html?code=1")  # the demo hub is never shown
+    assert hub.url.path == "/login.html" and hub.url.query == b"code=1" and "허브" not in hub.text
     for page in ("parent.html", "child.html"):
         html = neulbab_client.get(f"/{page}").text
         assert html.count("/voice/widget.js") == 1 and "nb_code" in html
-    assert "디자인" not in home.text and "variant=b" not in home.text  # chooser removed
+    index = restyle_page("index.html", (neulbab_client.app_dir / "index.html").read_text())
+    assert "디자인" not in index and "variant=b" not in index  # chooser removed
     assert "neulbab_variant','b'" in home.text  # and the app always uses design B
-    for page in ("index.html", "login.html"):
+    for page in ("login.html",):
         html = neulbab_client.get(f"/{page}").text
         assert "widget.js" not in html and "nb_code" in html  # code saved before redirect
     assert neulbab_client.get("/style.css").text == "body{}"
