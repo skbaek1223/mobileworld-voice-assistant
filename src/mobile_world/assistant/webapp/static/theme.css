@@ -146,3 +146,8 @@ ol.steps .step-current[data-step="arrived"] .step-label { color: #1E4A2B; }
 #login-role-guardian { background: #B5DCAF; border-color: #B5DCAF; color: #241710; box-shadow: 0 6px 0 #6E9E68; }
 #login-role-guardian:active { box-shadow: 0 2px 0 #6E9E68; }
 #login-role-guardian .role-main { color: #241710; }
+
+/* 누가 주문했는지: 어르신이 직접 = 살구색, 보호자가 대신 = 쑥색 (첫 화면 버튼과 같은 색) */
+.ordered-by { border-radius: 16px; font-weight: 800; }
+.ordered-by[data-ordered-by="parent"] { background: #F2A36B; border-color: #B8703F; color: #241710; }
+.ordered-by[data-ordered-by="guardian"] { background: #B5DCAF; border-color: #6E9E68; color: #241710; }
