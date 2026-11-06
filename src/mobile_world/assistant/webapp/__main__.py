@@ -144,6 +144,7 @@ def main(argv: list[str] | None = None) -> None:
     scheme = "https" if cert else "http"
     url = f"{scheme}://{ip}:{args.port}/"
     logger.info(f"늘밥 음성 비서: {url}   접속 코드: {cfg.access_code or '(없음)'}")
+    logger.info(f"목소리: {voice.config.tts_model} / {voice.config.tts_voice}")
     if cfg.access_code and app_dir:
         logger.info(f"접속 번호를 미리 넣은 주소: {url}?code={cfg.access_code}")
     if not cert:
