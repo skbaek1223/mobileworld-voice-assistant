@@ -113,3 +113,21 @@ ol.steps .step-current[data-step="arrived"] .step-label { color: #1E4A2B; }
 
 /* 첫 화면 역할 버튼: 사람 그림을 크게, 동그랗게 */
 .btn-role .role-pic { width: 72px; height: 72px; border-radius: 50%; box-shadow: 0 0 0 3px #FFFFFF; }
+
+/* 어르신 첫 화면: 메뉴 3개씩 큰 사진 줄로 (스크롤 없이), 아래에 [앞 메뉴] [다른 메뉴 보기] */
+#pa-1 h1 { margin-bottom: 12px; }
+#pa-1 .child-notice { display: none; }
+.card-list.bm-all { gap: 12px; margin: 0 0 16px; }
+.bm-all .menu-card { min-height: 108px; padding: 6px 16px 6px 6px; gap: 14px; border-radius: 22px; }
+.bm-all .menu-name { line-height: 1.2; }
+.bm-all .menu-card .menu-pic { width: 96px; height: 96px; border-radius: 16px; }
+.bm-all .menu-name { font-size: 28px; }
+.bm-all .menu-price { margin-top: 2px; font-size: 24px; }
+.bm-all .menu-card::after {  /* 누르는 줄이라는 표시: 오른쪽 화살표 */
+  content: ""; margin-left: auto; flex: none; width: 14px; height: 14px;
+  border-right: 4px solid #6B5546; border-top: 4px solid #6B5546; transform: rotate(45deg);
+}
+#pa-1 .actions { flex-direction: row; gap: 14px; margin: 0 0 12px; }
+#pa-1 .actions .btn { width: auto; flex: 1 1 0; white-space: nowrap; }
+#pa-1 .actions #bm-pa1-back { flex: 0 0 132px; }
+#pa-1 .b-position { display: none !important; }  /* 버튼이 위로 올라오게: 쪽 번호는 생략 */

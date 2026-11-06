@@ -149,6 +149,42 @@ MENU_TITLES = [
     ('"오늘 이 메뉴 어떠세요?"', '"어르신, 오늘 이 메뉴 어떠세요?"'),
     ('"이 메뉴는 어떠세요?"', '"어르신, 이 메뉴는 어떠세요?"'),
 ]
+# 어르신 first screen: three menus at a time as big photo rows (no scrolling). "다른 메뉴 보기"
+# shows the next three and "앞 메뉴" the previous ones. Back from the confirm screen returns
+# to the same three.
+MENUS_PER_PAGE = 3
+OPEN_B_OLD = "  function openB(i, back) {\n"
+OPEN_B_NEW = """  let bmPage = 0;
+  function openPage(page, back) {
+    const settings = A.loadSettings(), orders = A.loadOrders(), t = now();
+    const v = A.bCardView(settings, orders, t, 0);
+    const all = settings ? A.candidateList(A.MENUS, settings, orders, t) : [];
+    const pages = Math.max(1, Math.ceil(all.length / PER));
+    bmPage = Math.max(0, Math.min(page, pages - 1));
+    const list = all.slice(bmPage * PER, bmPage * PER + PER);
+    $("pa1-title").textContent = bmPage === 0 ? "어르신, 오늘 뭐 드실래요?" : "어르신, 이런 메뉴도 있어요";
+    const box = $("pa1-cards");
+    box.className = "card-list bm-all";
+    U.fillCards(box, list.map(function (m) {
+      return { id: m.id, name: m.name, priceText: A.formatPrice(m.price), pic: A.menuPic(m.id) };
+    }), function (id) { choose(id, "pa-1", bmPage); });
+    setNote(bmPage === 0 ? v.healthNote : "", bmPage === 0 ? v.healthDisclaimer : "");
+    setMoreNote("");
+    $("more-menus").textContent = "다른 메뉴 보기";
+    $("more-menus").hidden = bmPage >= pages - 1;
+    $("bm-pa1-back").hidden = bmPage === 0;
+    $("pa1-position").textContent = all.length > PER ? "메뉴 " + all.length + "개 중 " + (bmPage + 1) + "쪽" : "";
+    $("pa1-position").hidden = all.length <= PER;
+    $("pa1-last").hidden = true;
+    $("pa1-empty").textContent = v.empty || "";
+    $("pa1-empty").hidden = !v.empty;
+    show("pa-1", back);
+  }
+  window.bmMenuPage = function (step) { openPage(bmPage + step); };
+  function openB(i, back) {
+    if (i === 0) { openPage(back ? bmPage : 0, back); return; }
+    if (current === "pa-1") { openPage(bmPage + 1); return; }
+"""
 MENU_PHOTO_DIR = STATIC_DIR / "menus"  # real food photos (credits.json); others keep their drawing
 MENU_PIC_FN = 'function menuPic(id) { return "assets/menus/" + id + ".svg"; }'
 
@@ -170,6 +206,7 @@ def restyle_text(name: str, text: str) -> str:
         for old, new in MENU_TITLES:
             text = text.replace(old, new)
     elif name == "parent.js":
+        text = text.replace(OPEN_B_OLD, OPEN_B_NEW.replace("PER", str(MENUS_PER_PAGE)), 1)
         if PA3_OLD not in text:
             logger.warning("parent.js changed: the order screen will not reset by itself")
         text = text.replace(PA3_OLD, PA3_NEW.replace("AUTO_RESET_SEC", str(AUTO_RESET_SEC)))
@@ -188,6 +225,14 @@ def restyle_page(name: str, html: str) -> str:
     html = LOCAL_ASSET.sub(lambda m: f'{m.group(1)}{m.group(2)}?v={ASSET_VERSION}"', html)
     html = html.replace('href="/voice/theme.css"', f'href="/voice/theme.css?v={ASSET_VERSION}"')
     html = BACK_BUTTON.sub(lambda m: m.group(1) + BRAND_TAG, html, count=1)
+    if name == "parent.html":
+        html = html.replace(
+            '<button type="button" class="btn btn-big btn-secondary btn-more" id="more-menus"',
+            '<button type="button" class="btn btn-big btn-secondary" id="bm-pa1-back" hidden'
+            ' onclick="window.bmMenuPage(-1)">앞 메뉴</button>'
+            '<button type="button" class="btn btn-big btn-secondary btn-more" id="more-menus"',
+            1,
+        )
     if name == "parent.html" and PAM_ACTIONS in html:
         start = html.index(PAM_ACTIONS)
         end = html.index("</div>", start) + len("</div>")

@@ -292,6 +292,15 @@ def test_app_look_is_applied_when_served(neulbab_client):
         assert neulbab_client.get(path).status_code == 200
 
 
+def test_first_screen_shows_three_menus_a_page():
+    from mobile_world.assistant.webapp.server import OPEN_B_OLD, restyle_page, restyle_text
+
+    js = restyle_text("parent.js", "(function () {\n" + OPEN_B_OLD + "  }\n})();")
+    assert "function openPage(page, back)" in js and "/ 3)" in js and "window.bmMenuPage" in js
+    html = restyle_page("parent.html", '<button type="button" class="btn btn-big btn-secondary btn-more" id="more-menus">')
+    assert html.index('id="bm-pa1-back"') < html.index('id="more-menus"')  # 앞 메뉴 | 다른 메뉴 보기
+
+
 def test_order_screen_resets_after_arrival():
     from mobile_world.assistant.webapp.server import PA3_OLD, restyle_text
 
