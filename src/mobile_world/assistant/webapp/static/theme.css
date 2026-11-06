@@ -151,3 +151,9 @@ ol.steps .step-current[data-step="arrived"] .step-label { color: #1E4A2B; }
 .ordered-by { border-radius: 16px; font-weight: 800; }
 .ordered-by[data-ordered-by="parent"] { background: #F2A36B; border-color: #B8703F; color: #241710; }
 .ordered-by[data-ordered-by="guardian"] { background: #B5DCAF; border-color: #6E9E68; color: #241710; }
+
+/* 어느 배달앱으로 주문했는지: 노란 상자로 눈에 띄게 */
+.platform-chip { background: #FFE08A !important; border: 3px solid #C99A1E !important; border-radius: 18px !important; }
+.platform-chip .platform-text { font-weight: 900; color: #241710; background: transparent; }
+.platform-chip .platform-no { color: #4A3828; background: transparent; }
+.platform-chip .platform-badge { background: #FFFFFF; border-radius: 10px; padding: 4px; }
