@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="할머니와 할아버지">
-  <circle cx="48" cy="48" r="48" fill="#F2A36B"/>
+  <circle cx="48" cy="48" r="48" fill="#C2410C"/>
   <clipPath id="c"><circle cx="48" cy="48" r="48"/></clipPath>
   <g clip-path="url(#c)"><g transform="translate(48 50) scale(1.18) translate(-48 -46)">
     <!-- 할아버지 (오른쪽, 뒤) -->
@@ -17,7 +17,7 @@
     </g>
     <!-- 할머니 (왼쪽, 앞) -->
     <g transform="translate(-14 8)">
-      <path d="M22 100c0-17 11-27 26-27s26 10 26 27z" fill="#C2410C"/>
+      <path d="M22 100c0-17 11-27 26-27s26 10 26 27z" fill="#FFE3C4" stroke="#8A5232" stroke-width="1.4"/>
       <path d="M41 73l7 8 7-8" fill="#FFFFFF"/>
       <rect x="43" y="61" width="10" height="12" rx="4" fill="#F2BE97"/>
       <circle cx="48" cy="25" r="7" fill="#D6D1CA" stroke="#7A6A5E" stroke-width="1.4"/>
