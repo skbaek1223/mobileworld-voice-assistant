@@ -240,6 +240,7 @@ def restyle_page(name: str, html: str) -> str:
     html = LOCAL_ASSET.sub(lambda m: f'{m.group(1)}{m.group(2)}?v={ASSET_VERSION}"', html)
     html = html.replace('href="/voice/theme.css"', f'href="/voice/theme.css?v={ASSET_VERSION}"')
     html = BACK_BUTTON.sub(lambda m: m.group(1) + BRAND_TAG, html, count=1)
+    html = html.replace('src="/voice/brand.svg"', f'src="/voice/brand.svg?v={ASSET_VERSION}"')
     if name == "parent.html":
         html = html.replace(
             '<button type="button" class="btn btn-big btn-secondary btn-more" id="more-menus"',
@@ -266,9 +267,9 @@ def restyle_page(name: str, html: str) -> str:
             html = html[: g.start()] + pa.group(0) + html[g.end() : pa.start()] + g.group(0) + html[pa.end() :]
         # friendlier role pictures: an older person and a family member with a heart
         html = html.replace('src="assets/tab_my.svg" width="56" height="56" alt="사람 그림"',
-                            'src="/voice/role-guardian.svg" width="72" height="72" alt="보호자 그림"')
+                            f'src="/voice/role-guardian.svg?v={ASSET_VERSION}" width="72" height="72" alt="보호자 그림"')
         html = html.replace('src="assets/family_code.svg" width="56" height="56" alt="열쇠 그림"',
-                            'src="/voice/role-parent.svg" width="72" height="72" alt="어르신 그림"')
+                            f'src="/voice/role-parent.svg?v={ASSET_VERSION}" width="72" height="72" alt="어르신 그림"')
         html = html.replace("</body>", ONE_TAP_LOGIN + "</body>", 1)
     if name in VOICE_PAGES:
         html = html.replace("</body>", REMAINING_LINE + "</body>", 1)
