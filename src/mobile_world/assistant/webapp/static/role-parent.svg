@@ -1,13 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="할머니와 할아버지">
-  <circle cx="48" cy="48" r="48" fill="#FFF1DD"/>
+  <circle cx="48" cy="48" r="48" fill="#F2A36B"/>
   <clipPath id="c"><circle cx="48" cy="48" r="48"/></clipPath>
-  <g clip-path="url(#c)">
+  <g clip-path="url(#c)"><g transform="translate(48 50) scale(1.18) translate(-48 -46)">
     <!-- 할아버지 (오른쪽, 뒤) -->
     <g transform="translate(18 2)">
       <path d="M22 100c0-17 11-27 26-27s26 10 26 27z" fill="#6B4A2E"/>
-      <path d="M41 73l7 8 7-8" fill="#FFF1DD"/>
+      <path d="M41 73l7 8 7-8" fill="#FFFFFF"/>
       <rect x="43" y="61" width="10" height="12" rx="4" fill="#EDBE98"/>
-      <ellipse cx="48" cy="48" rx="15" ry="17" fill="#F2C7A2"/>
+      <ellipse cx="48" cy="48" rx="15" ry="17" fill="#F7D3B2" stroke="#8A5232" stroke-width="1.6"/>
       <path d="M33 47c-1-6 1-11 4-13 0 5 1 8 2 10zM63 47c1-6-1-11-4-13 0 5-1 8-2 10z" fill="#E4E0DA"/>
       <path d="M36 38c3-6 7-8 12-8s9 2 12 8c-4-2-8-3-12-3s-8 1-12 3z" fill="#E4E0DA" opacity=".9"/>
       <g fill="none" stroke="#3B2A20" stroke-width="1.8"><rect x="36.5" y="44" width="9" height="7" rx="2.5"/><rect x="50.5" y="44" width="9" height="7" rx="2.5"/><path d="M45.5 47h5"/></g>
@@ -18,16 +18,16 @@
     <!-- 할머니 (왼쪽, 앞) -->
     <g transform="translate(-14 8)">
       <path d="M22 100c0-17 11-27 26-27s26 10 26 27z" fill="#C2410C"/>
-      <path d="M41 73l7 8 7-8" fill="#FFF1DD"/>
+      <path d="M41 73l7 8 7-8" fill="#FFFFFF"/>
       <rect x="43" y="61" width="10" height="12" rx="4" fill="#F2BE97"/>
-      <circle cx="48" cy="25" r="7" fill="#C9C3BB"/>
-      <path d="M30 47c0-12 8-19 18-19s18 7 18 19c0 3-1 4-2 5H32c-1-1-2-2-2-5z" fill="#C9C3BB"/>
-      <ellipse cx="48" cy="49" rx="15" ry="16" fill="#F6CDAA"/>
+      <circle cx="48" cy="25" r="7" fill="#D6D1CA" stroke="#7A6A5E" stroke-width="1.4"/>
+      <path d="M30 47c0-12 8-19 18-19s18 7 18 19c0 3-1 4-2 5H32c-1-1-2-2-2-5z" fill="#D6D1CA" stroke="#7A6A5E" stroke-width="1.4"/>
+      <ellipse cx="48" cy="49" rx="15" ry="16" fill="#FBDCC0" stroke="#8A5232" stroke-width="1.6"/>
       <path d="M33 44c3-7 9-10 15-10s12 3 15 10c-5-3-10-4-15-4s-10 1-15 4z" fill="#C9C3BB"/>
       <g fill="none" stroke="#4A3828" stroke-width="1.8"><circle cx="41.5" cy="49" r="4.6"/><circle cx="54.5" cy="49" r="4.6"/><path d="M46 49h4"/></g>
       <circle cx="41.5" cy="49.5" r="1.3" fill="#241710"/><circle cx="54.5" cy="49.5" r="1.3" fill="#241710"/>
       <circle cx="37.5" cy="56" r="2.5" fill="#F2A48A" opacity=".7"/><circle cx="58.5" cy="56" r="2.5" fill="#F2A48A" opacity=".7"/>
       <path d="M44 57.5c2.5 2.5 5.5 2.5 8 0" fill="none" stroke="#7A3A1A" stroke-width="2" stroke-linecap="round"/>
     </g>
-  </g>
+  </g></g>
 </svg>
