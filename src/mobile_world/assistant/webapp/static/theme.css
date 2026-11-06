@@ -137,6 +137,3 @@ ol.steps .step-current[data-step="arrived"] .step-label { color: #1E4A2B; }
   display: inline-block; margin: 4px 0 12px; padding: 8px 18px; border-radius: 18px;
   font-size: 26px; font-weight: 900; color: #FFFFFF; background: #C2410C;
 }
-
-/* "이미 만들고 있어서 취소할 수 없어요. 자녀분께 연락해 주세요"는 보이지도, 읽히지도 않게 */
-#cancel-unavailable { display: none !important; }

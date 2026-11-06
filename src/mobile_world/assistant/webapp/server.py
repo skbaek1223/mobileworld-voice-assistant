@@ -98,6 +98,8 @@ BRAND_TAG = (  # app header logo; hidden by theme.css whenever the back button s
 )
 # "practice only" lines inside the guardian settings form (the rest are hidden by theme.css)
 PRACTICE_LINES = {
+    # 어르신: keep "취소할 수 없어요" but drop the "자녀분께 연락해 주세요" part
+    "parent.html": [("취소할 수 없어요. 자녀분께 연락해 주세요", "취소할 수 없어요")],
     "child.html": [
         ('<p class="field-help">연습용이라 지어낸 주소를 써도 돼요. 예를 들면 ', '<p class="field-help">예를 들면 '),
         ('<p class="field-help">연습용 카드라 진짜 돈은 나가지 않아요</p>', ""),
