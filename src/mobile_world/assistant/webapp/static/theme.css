@@ -142,3 +142,7 @@ ol.steps .step-current[data-step="arrived"] .step-label { color: #1E4A2B; }
 #login-role-parent { background: #F2A36B; border-color: #F2A36B; color: #241710; box-shadow: 0 6px 0 #B8703F; }
 #login-role-parent:active { box-shadow: 0 2px 0 #B8703F; }
 #login-role-parent .role-main { color: #241710; }
+/* "보호자로 시작": 연한 쑥색 버튼(진한 글씨) + 진한 초록 그림 배경 */
+#login-role-guardian { background: #B5DCAF; border-color: #B5DCAF; color: #241710; box-shadow: 0 6px 0 #6E9E68; }
+#login-role-guardian:active { box-shadow: 0 2px 0 #6E9E68; }
+#login-role-guardian .role-main { color: #241710; }

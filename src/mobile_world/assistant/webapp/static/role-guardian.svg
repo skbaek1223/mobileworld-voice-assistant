@@ -1,11 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="보호자">
-  <circle cx="48" cy="48" r="48" fill="#E3F0E3"/>
+  <circle cx="48" cy="48" r="48" fill="#2E6B30"/>
   <clipPath id="c"><circle cx="48" cy="48" r="48"/></clipPath>
   <g clip-path="url(#c)">
-    <path d="M14 100c0-20 15-32 34-32s34 12 34 32z" fill="#2E6B30"/>
-    <path d="M40 68l8 9 8-9" fill="#FFFFFF"/>
+    <path d="M14 100c0-20 15-32 34-32s34 12 34 32z" fill="#FFF1DD" stroke="#5A3E2A" stroke-width="1.4"/>
+    <path d="M40 68l8 9 8-9" fill="#C2410C"/>
     <rect x="42" y="56" width="12" height="12" rx="5" fill="#E8B48C"/>
-    <ellipse cx="48" cy="44" rx="17" ry="19" fill="#F2C49E"/>
+    <ellipse cx="48" cy="44" rx="17" ry="19" fill="#F6CFAD" stroke="#8A5232" stroke-width="1.6"/>
     <!-- 희끗한 짧은 머리 (중년) -->
     <path d="M30 43c-2-14 7-23 18-23 12 0 20 8 18 22-2-6-6-10-11-11-6 2-14 2-21 0-2 3-3 7-4 12z" fill="#4A4038"/>
     <path d="M31 40c0-3 1-6 2-8M65 40c0-3-1-6-2-8M44 23c4-1 8-1 11 1" fill="none" stroke="#B8B0A6" stroke-width="2.4" stroke-linecap="round"/>
@@ -16,6 +16,6 @@
     <path d="M37 53c1 1 2 1.5 3 1.5M59 53c-1 1-2 1.5-3 1.5" stroke="#D9A07A" stroke-width="1.3" stroke-linecap="round" fill="none"/>
     <path d="M42 54c3.5 3.5 8.5 3.5 12 0" fill="none" stroke="#7A3A1A" stroke-width="2.4" stroke-linecap="round"/>
   </g>
-  <circle cx="74" cy="72" r="15" fill="#FFFFFF" stroke="#E3F0E3" stroke-width="2"/>
+  <circle cx="74" cy="72" r="15" fill="#FFFFFF" stroke="#2E6B30" stroke-width="2"/>
   <path d="M74 81c-7-5-10-8-10-12a5 5 0 0 1 10-2 5 5 0 0 1 10 2c0 4-3 7-10 12z" fill="#C2410C"/>
 </svg>
