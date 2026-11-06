@@ -156,16 +156,34 @@
     const sec = id && document.getElementById(id);
     if (!sec) return null;
     if (id === "pa-1" || id === "pa-m") {
+      // Offer the menus one at a time: "들깨미역국 정식 어떠세요? … 네라고 답해 주세요".
+      // 네 -> that menu's card (then the confirm screen asks once more), 아니요 -> the next one,
+      // then the next three ("다른 메뉴 보기"). Anything else goes to the assistant as usual.
       const title = txt(id === "pa-1" ? "pa1-title" : "pam-title");
       const names = menuNames(sec);
       const empty = txt(id === "pa-1" ? "pa1-empty" : "pam-empty");
-      // one big card (design B): name the dish, then a gentle prompt
-      const one = names.length === 1;
-      const dish = one ? names[0] + (hasBatchim(names[0]) === false ? "예요" : "이에요") : listSentence(names);
-      const body = join([title, txt("health-note"), dish, empty]);
-      const ask = one ? "드시고 싶으시면 말씀해 주시거나, 사진을 눌러 주세요"
-        : (names.length ? "드시고 싶은 걸 말씀하시거나 사진을 눌러 주세요" : "");
-      return { key: id + "|" + body, speak: join([body, ask]), hint: body };
+      const listKey = id + "|" + names.join(",");
+      if (listKey !== offerList) { offerList = listKey; offer = 0; }
+      const hint = join([title, txt("health-note"), listSentence(names), empty]);
+      if (!names.length) return { key: id + "|" + hint, speak: hint, hint: hint };
+      const name = names[offer];
+      const topic = name + (hasBatchim(name) === false ? "는" : "은");
+      const speak = offer === 0
+        ? join([title, txt("health-note"), name + " 어떠세요?", "드시고 싶으시면 네라고 답해 주시거나 그림을 눌러 주세요"])
+        : join(["그럼 " + topic + " 어떠세요?", "드시고 싶으시면 네라고 답해 주세요"]);
+      return {
+        key: listKey + "|" + offer, speak: speak, hint: hint,
+        local: {
+          yes: () => {
+            const cards = Array.from(sec.querySelectorAll('[data-testid="menu-card"]')).filter(visible);
+            if (cards[offer]) cards[offer].click();
+          },
+          no: () => {
+            if (offer + 1 < names.length) { offer += 1; return; }
+            if (!click("#more-menus") && !click("#pam-more")) offer = 0;  // no more: start over
+          },
+        },
+      };
     }
     if (id === "pa-2") {
       const body = join(["이대로 주문할까요?", txt("pa2-menu"), txt("pa2-price"), txt("pa2-payment")]);
@@ -240,6 +258,7 @@
     send({ type: "sync_up", settings: settings, orders: orders });
   }, 700);
 
+  let offer = 0, offerList = "";  // which menu on the screen is being offered by voice
   let localIntent = null;  // 네/아니요 handlers of the screen the words were spoken on
   function handle(m) {
     switch (m.type) {

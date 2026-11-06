@@ -1,19 +1,33 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="어르신">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="할머니와 할아버지">
   <circle cx="48" cy="48" r="48" fill="#FFF1DD"/>
   <clipPath id="c"><circle cx="48" cy="48" r="48"/></clipPath>
   <g clip-path="url(#c)">
-    <path d="M14 100c0-20 15-32 34-32s34 12 34 32z" fill="#C2410C"/>
-    <path d="M40 68l8 10 8-10" fill="#FFF1DD"/>
-    <rect x="42" y="56" width="12" height="12" rx="5" fill="#F2BE97"/>
-    <circle cx="48" cy="18" r="9" fill="#C9C3BB"/>
-    <path d="M26 44c0-14 10-22 22-22s22 8 22 22c0 3-1 5-2 6H28c-1-1-2-3-2-6z" fill="#C9C3BB"/>
-    <ellipse cx="48" cy="46" rx="18" ry="19" fill="#F6CDAA"/>
-    <path d="M30 40c4-8 10-11 18-11s14 3 18 11c-6-4-12-5-18-5s-12 1-18 5z" fill="#C9C3BB"/>
-    <g fill="none" stroke="#4A3828" stroke-width="2.2">
-      <circle cx="40.5" cy="46" r="5.5"/><circle cx="55.5" cy="46" r="5.5"/><path d="M46 46h4"/>
+    <!-- 할아버지 (오른쪽, 뒤) -->
+    <g transform="translate(18 2)">
+      <path d="M22 100c0-17 11-27 26-27s26 10 26 27z" fill="#6B4A2E"/>
+      <path d="M41 73l7 8 7-8" fill="#FFF1DD"/>
+      <rect x="43" y="61" width="10" height="12" rx="4" fill="#EDBE98"/>
+      <ellipse cx="48" cy="48" rx="15" ry="17" fill="#F2C7A2"/>
+      <path d="M33 47c-1-6 1-11 4-13 0 5 1 8 2 10zM63 47c1-6-1-11-4-13 0 5-1 8-2 10z" fill="#E4E0DA"/>
+      <path d="M36 38c3-6 7-8 12-8s9 2 12 8c-4-2-8-3-12-3s-8 1-12 3z" fill="#E4E0DA" opacity=".9"/>
+      <g fill="none" stroke="#3B2A20" stroke-width="1.8"><rect x="36.5" y="44" width="9" height="7" rx="2.5"/><rect x="50.5" y="44" width="9" height="7" rx="2.5"/><path d="M45.5 47h5"/></g>
+      <circle cx="41" cy="47.5" r="1.3" fill="#241710"/><circle cx="55" cy="47.5" r="1.3" fill="#241710"/>
+      <path d="M42 56c2-1.5 4-2 6-2s4 .5 6 2" fill="none" stroke="#E4E0DA" stroke-width="3" stroke-linecap="round"/>
+      <path d="M44 59c2.5 2 5.5 2 8 0" fill="none" stroke="#7A3A1A" stroke-width="2" stroke-linecap="round"/>
     </g>
-    <circle cx="40.5" cy="46.5" r="1.6" fill="#241710"/><circle cx="55.5" cy="46.5" r="1.6" fill="#241710"/>
-    <circle cx="36" cy="54" r="3" fill="#F2A48A" opacity=".7"/><circle cx="60" cy="54" r="3" fill="#F2A48A" opacity=".7"/>
-    <path d="M42 56c3.5 3.5 8.5 3.5 12 0" fill="none" stroke="#7A3A1A" stroke-width="2.4" stroke-linecap="round"/>
+    <!-- 할머니 (왼쪽, 앞) -->
+    <g transform="translate(-14 8)">
+      <path d="M22 100c0-17 11-27 26-27s26 10 26 27z" fill="#C2410C"/>
+      <path d="M41 73l7 8 7-8" fill="#FFF1DD"/>
+      <rect x="43" y="61" width="10" height="12" rx="4" fill="#F2BE97"/>
+      <circle cx="48" cy="25" r="7" fill="#C9C3BB"/>
+      <path d="M30 47c0-12 8-19 18-19s18 7 18 19c0 3-1 4-2 5H32c-1-1-2-2-2-5z" fill="#C9C3BB"/>
+      <ellipse cx="48" cy="49" rx="15" ry="16" fill="#F6CDAA"/>
+      <path d="M33 44c3-7 9-10 15-10s12 3 15 10c-5-3-10-4-15-4s-10 1-15 4z" fill="#C9C3BB"/>
+      <g fill="none" stroke="#4A3828" stroke-width="1.8"><circle cx="41.5" cy="49" r="4.6"/><circle cx="54.5" cy="49" r="4.6"/><path d="M46 49h4"/></g>
+      <circle cx="41.5" cy="49.5" r="1.3" fill="#241710"/><circle cx="54.5" cy="49.5" r="1.3" fill="#241710"/>
+      <circle cx="37.5" cy="56" r="2.5" fill="#F2A48A" opacity=".7"/><circle cx="58.5" cy="56" r="2.5" fill="#F2A48A" opacity=".7"/>
+      <path d="M44 57.5c2.5 2.5 5.5 2.5 8 0" fill="none" stroke="#7A3A1A" stroke-width="2" stroke-linecap="round"/>
+    </g>
   </g>
 </svg>

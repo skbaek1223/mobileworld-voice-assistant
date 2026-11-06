@@ -4,12 +4,17 @@
   <g clip-path="url(#c)">
     <path d="M14 100c0-20 15-32 34-32s34 12 34 32z" fill="#2E6B30"/>
     <path d="M40 68l8 9 8-9" fill="#FFFFFF"/>
-    <rect x="42" y="56" width="12" height="12" rx="5" fill="#EDBE98"/>
-    <ellipse cx="48" cy="44" rx="17" ry="19" fill="#F6CDAA"/>
-    <path d="M30 42c-1-14 8-22 19-22 11 0 18 8 17 21-3-6-9-10-18-10-6 0-12 3-18 11z" fill="#3B2A20"/>
-    <circle cx="41.5" cy="45" r="2" fill="#241710"/><circle cx="54.5" cy="45" r="2" fill="#241710"/>
-    <circle cx="37" cy="52" r="3" fill="#F2A48A" opacity=".6"/><circle cx="59" cy="52" r="3" fill="#F2A48A" opacity=".6"/>
-    <path d="M42 53c3.5 3.5 8.5 3.5 12 0" fill="none" stroke="#7A3A1A" stroke-width="2.4" stroke-linecap="round"/>
+    <rect x="42" y="56" width="12" height="12" rx="5" fill="#E8B48C"/>
+    <ellipse cx="48" cy="44" rx="17" ry="19" fill="#F2C49E"/>
+    <!-- 희끗한 짧은 머리 (중년) -->
+    <path d="M30 43c-2-14 7-23 18-23 12 0 20 8 18 22-2-6-6-10-11-11-6 2-14 2-21 0-2 3-3 7-4 12z" fill="#4A4038"/>
+    <path d="M31 40c0-3 1-6 2-8M65 40c0-3-1-6-2-8M44 23c4-1 8-1 11 1" fill="none" stroke="#B8B0A6" stroke-width="2.4" stroke-linecap="round"/>
+    <!-- 안경, 눈가 주름 -->
+    <g fill="none" stroke="#3B2A20" stroke-width="2"><rect x="35" y="40" width="11" height="8.5" rx="3"/><rect x="50" y="40" width="11" height="8.5" rx="3"/><path d="M46 44h4"/></g>
+    <circle cx="40.5" cy="44.5" r="1.6" fill="#241710"/><circle cx="55.5" cy="44.5" r="1.6" fill="#241710"/>
+    <path d="M33 47l-2 1M63 47l2 1" stroke="#C9926C" stroke-width="1.4" stroke-linecap="round"/>
+    <path d="M37 53c1 1 2 1.5 3 1.5M59 53c-1 1-2 1.5-3 1.5" stroke="#D9A07A" stroke-width="1.3" stroke-linecap="round" fill="none"/>
+    <path d="M42 54c3.5 3.5 8.5 3.5 12 0" fill="none" stroke="#7A3A1A" stroke-width="2.4" stroke-linecap="round"/>
   </g>
   <circle cx="74" cy="72" r="15" fill="#FFFFFF" stroke="#E3F0E3" stroke-width="2"/>
   <path d="M74 81c-7-5-10-8-10-12a5 5 0 0 1 10-2 5 5 0 0 1 10 2c0 4-3 7-10 12z" fill="#C2410C"/>

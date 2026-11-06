@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>밥마중 목소리 고르기</title>
+<style>
+:root { --bg:#FFF7EA; --ink:#241710; --sub:#4A3828; --accent:#C2410C; --line:#EDD6BF; }
+body { margin:0; background:var(--bg); color:var(--ink); font-family:"Apple SD Gothic Neo","Noto Sans KR",sans-serif; font-size:22px; line-height:1.5; word-break:keep-all; }
+main { max-width:640px; margin:0 auto; padding:24px 16px 48px; }
+h1 { font-size:30px; margin:0 0 8px; }
+p { color:var(--sub); margin:0 0 20px; }
+.v { background:#fff; border:3px solid var(--line); border-radius:20px; padding:14px 16px; margin:0 0 14px; }
+.v b { display:block; font-size:24px; margin-bottom:6px; }
+.v span { display:block; font-size:22px; color:var(--sub); margin-bottom:8px; }
+audio { width:100%; }
+.now { border-color:var(--accent); }
+</style>
+</head>
+<body>
+<main>
+<h1>목소리 고르기</h1>
+<p>같은 문장을 목소리마다 읽었어요: "어르신, 오늘 뭐 드실래요? 들깨미역국 정식 어떠세요? 드시고 싶으시면 네라고 답해 주시거나 그림을 눌러 주세요."</p>
+<div class="v now"><b>1. 지금 목소리 (coral)</b><span>지금 앱에서 쓰는 목소리</span><audio controls preload="none" src="voices/1_coral_now.mp3"></audio></div>
+<div class="v"><b>2. coral, 더 부드럽게</b><span>같은 목소리, 손녀가 할머니께 말하듯 천천히</span><audio controls preload="none" src="voices/2_coral_warm.mp3"></audio></div>
+<div class="v"><b>3. marin</b><span>가장 새 목소리, 자연스러운 여성</span><audio controls preload="none" src="voices/3_marin.mp3"></audio></div>
+<div class="v"><b>4. cedar</b><span>가장 새 목소리, 차분한 남성</span><audio controls preload="none" src="voices/4_cedar.mp3"></audio></div>
+<div class="v"><b>5. nova</b><span>밝은 여성</span><audio controls preload="none" src="voices/5_nova.mp3"></audio></div>
+<div class="v"><b>6. shimmer</b><span>맑고 가벼운 여성</span><audio controls preload="none" src="voices/6_shimmer.mp3"></audio></div>
+<div class="v"><b>7. sage</b><span>차분하고 낮은 여성</span><audio controls preload="none" src="voices/7_sage.mp3"></audio></div>
+</main>
+</body>
+</html>
