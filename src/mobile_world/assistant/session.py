@@ -216,6 +216,7 @@ class VoiceAssistantSession:
         router: Callable[[str, RouteContext], str | None] | None = None,
         context_provider: Callable[[], str] | None = None,
         commit_tools: dict[str, str] | None = None,
+        confirm_note: Callable[[str, dict, str], Any] | None = None,
         filler_after_sec: float | None = None,
         stream_speech: bool = True,
         language_guard: bool = True,
@@ -237,6 +238,8 @@ class VoiceAssistantSession:
         self.router = router
         self.context_provider = context_provider
         self.commit_tools = dict(commit_tools or {})
+        self.confirm_note = confirm_note
+        self._request = ""
         self.filler_after_sec = filler_after_sec
         self.stream_speech = stream_speech
         self.language_guard = language_guard
@@ -326,6 +329,7 @@ class VoiceAssistantSession:
         self._filler_used = False
         self._streamed = ""
         self._dialog = []
+        self._request = request
         steps: list[StepRecord] = []
 
         if self.router:
@@ -351,6 +355,7 @@ class VoiceAssistantSession:
         }
         reply, status = self.phrases["max_steps"], "max_steps"
         language_retries = 1
+        agent_retries = 1
         try:
             for step in range(1, self.max_steps + 1):
                 self._emit(State.THINKING, step=step)
@@ -381,6 +386,18 @@ class VoiceAssistantSession:
                         else:
                             reply, status = self.phrases["failed"], "failed"
                             break
+
+                if (prediction is None or action.action_type in (UNKNOWN, ENV_FAIL)) and agent_retries:
+                    # a dropped API call or an unreadable reply: try once more before giving up
+                    agent_retries -= 1
+                    logger.warning("[agent] no usable action; retrying once")
+                    obs = {
+                        "screenshot": self.device.screenshot(),
+                        "tool_call": "Note: your last reply could not be used. Reply again with "
+                        "exactly one valid JSON action.",
+                        "ask_user_response": None,
+                    }
+                    continue
 
                 outcome = self._terminal_reply(prediction, action)
                 if outcome is not None:
@@ -517,12 +534,12 @@ class VoiceAssistantSession:
         answer = self._ask(question)
         if answer is None:
             return "silent"
-        verdict = classify_yes_no(answer, self.language)
+        verdict = classify_yes_no(answer, self.language, question)
         if verdict == "unclear":
             answer = self._ask(self.phrases["say_yes_no"])
             if answer is None:
                 return "silent"
-            verdict = classify_yes_no(answer, self.language)
+            verdict = classify_yes_no(answer, self.language, question)
         self._last_confirm_answer = answer
         return "yes" if verdict == "yes" else "no"
 
@@ -536,6 +553,21 @@ class VoiceAssistantSession:
         if not result.get("ok") or "confirmation_id" not in data:
             return raw, None
         question = data.get("confirm_question") or ""
+        if self.confirm_note:  # e.g. what the memory says about this menu
+            try:
+                said = " ".join([self._request] + [t for who, t in self._dialog if who == "User"])
+                checked = self.confirm_note(issuer, data, said)
+            except Exception:
+                logger.exception("confirm_note failed; asking the app's question as is")
+                checked = None
+            if isinstance(checked, dict) and checked.get("block"):
+                return (
+                    f"Not asked, nothing ordered: {checked['block']} Tell the user kindly why "
+                    "and offer one safe menu instead (call prepare_order again only after they agree).",
+                    None,
+                )
+            if isinstance(checked, str) and checked:
+                question = checked
         commit = self.commit_tools[issuer]
         steps.append(
             StepRecord(

@@ -1,0 +1,406 @@
+<title>밥마중 비서 채점</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: work-queue on the left, the conversation being judged in the middle, the score sheet on the right. */
+:root {
+  --bg: #F6F5F2;
+  --panel: #FFFFFF;
+  --ink: #1F1B17;
+  --muted: #6A625A;
+  --line: #E2DDD6;
+  --accent: #B8410E;
+  --accent-soft: #FBE7DB;
+  --elder: #EEF3EA;
+  --elder-ink: #24442A;
+  --bot: #FFFFFF;
+  --good: #2F6F3A;
+  --bad: #A3271C;
+  --warn: #8A5A00;
+  --font-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #171513; --panel: #211E1B; --ink: #F1ECE6; --muted: #B3AAA0; --line: #39342F;
+    --accent: #F08A55; --accent-soft: #3A2419; --elder: #1F2C21; --elder-ink: #CFE6D2; --bot: #26221F;
+    --good: #7FCB8C; --bad: #F08A7E; --warn: #E5B65A; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #171513; --panel: #211E1B; --ink: #F1ECE6; --muted: #B3AAA0; --line: #39342F;
+  --accent: #F08A55; --accent-soft: #3A2419; --elder: #1F2C21; --elder-ink: #CFE6D2; --bot: #26221F;
+  --good: #7FCB8C; --bad: #F08A7E; --warn: #E5B65A; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 32px; word-break: keep-all; overflow-wrap: anywhere;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+button, select, textarea, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+header.top {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg);
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding-block: 14px 12px; border-bottom: 1px solid var(--line);
+}
+header.top h1 { margin: 0; font-size: 19px; font-weight: 700; text-wrap: balance; }
+.tabs { display: flex; gap: 4px; }
+.tabs button { border: 1px solid var(--line); background: var(--panel); padding: 6px 12px; border-radius: 8px; }
+.tabs button[aria-selected="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.me { margin-left: auto; display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 14px; }
+.me img { width: 24px; height: 24px; border-radius: 50%; }
+.bar { height: 6px; width: 120px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--accent); width: 0; }
+
+.notice { margin-top: 16px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--muted); }
+
+.work { display: grid; grid-template-columns: 250px minmax(0, 1fr) 340px; gap: 16px; margin-top: 16px; align-items: start; }
+@media (max-width: 1080px) { .work { grid-template-columns: minmax(0, 1fr) 320px; } .queue { grid-column: 1 / -1; } }
+@media (max-width: 760px) { .work { grid-template-columns: minmax(0, 1fr); } }
+
+.queue { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.queue .filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.queue select, .queue label { font-size: 14px; }
+.queue select { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; background: var(--panel); }
+.list { list-style: none; margin: 0; padding: 0; max-height: 64vh; overflow: auto; display: flex; flex-direction: column; gap: 2px; }
+@media (max-width: 1080px) { .list { max-height: 220px; } }
+.list button { width: 100%; text-align: left; display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; border: 0; background: transparent; padding: 7px 8px; border-radius: 8px; }
+.list button:hover { background: var(--bg); }
+.list button[aria-current="true"] { background: var(--accent-soft); }
+.code { font-family: var(--font-mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.cat { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--line); }
+.dot.done { background: var(--good); border-color: var(--good); }
+
+.case { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.case h2 { margin: 0; font-size: 17px; text-wrap: balance; }
+.eyebrow { font-size: 12px; letter-spacing: .04em; color: var(--muted); text-transform: uppercase; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: 12.5px; border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; color: var(--muted); }
+.goal { border-left: 4px solid var(--accent); background: var(--accent-soft); padding: 10px 12px; border-radius: 0 8px 8px 0; }
+.goal b { display: block; font-size: 13px; color: var(--accent); margin-bottom: 2px; }
+details.ctx { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+details.ctx summary { cursor: pointer; font-weight: 500; }
+.triples { margin: 8px 0 0; padding-left: 18px; font-size: 14px; }
+.triples li { margin: 2px 0; }
+.hist { margin-top: 10px; font-size: 14px; display: flex; flex-direction: column; gap: 8px; }
+.hist .day { color: var(--muted); font-size: 13px; }
+.chat { display: flex; flex-direction: column; gap: 8px; }
+.msg { max-width: 86%; padding: 9px 12px; border-radius: 12px; border: 1px solid var(--line); }
+.msg small { display: block; font-size: 11.5px; color: var(--muted); margin-bottom: 2px; }
+.msg.elder { align-self: flex-end; background: var(--elder); color: var(--elder-ink); border-color: transparent; }
+.msg.bot { align-self: flex-start; background: var(--bot); }
+.outcome { display: flex; gap: 10px; align-items: baseline; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 10px; }
+.outcome b { font-size: 13px; color: var(--muted); white-space: nowrap; }
+.ref { font-size: 14px; color: var(--muted); }
+
+.sheet { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 14px; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 72px); min-width: 0; }
+@media (max-width: 760px) { .sheet { position: static; } }
+.dim { display: flex; flex-direction: column; gap: 6px; }
+.dim .q { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.dim .q span { font-weight: 500; }
+.dim .q small { color: var(--muted); font-size: 12.5px; }
+.scale { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.scale button { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 6px 0; font-variant-numeric: tabular-nums; }
+.scale button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.verdict { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.verdict button { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 8px 0; }
+.verdict button { padding: 12px 0; font-weight: 700; font-size: 16px; }
+.verdict button[aria-pressed="true"][data-v="pass"] { background: var(--good); border-color: var(--good); color: #fff; }
+.verdict button[aria-pressed="true"][data-v="fail"] { background: var(--bad); border-color: var(--bad); color: #fff; }
+.verdict button[aria-pressed="true"][data-v="border"] { background: var(--warn); border-color: var(--warn); color: #fff; }
+.guide { margin: 6px 0 0; padding-left: 18px; font-size: 13px; color: var(--muted); display: flex; flex-direction: column; gap: 2px; }
+.guide b { color: var(--ink); font-weight: 500; margin-right: 4px; }
+textarea { width: 100%; min-height: 70px; border: 1px solid var(--line); border-radius: 8px; padding: 8px; background: var(--panel); resize: vertical; }
+.actions { display: flex; gap: 8px; align-items: center; }
+.actions .primary { margin-left: auto; background: var(--ink); color: var(--bg); border: 0; border-radius: 8px; padding: 9px 16px; }
+.actions .ghost { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 9px 12px; }
+.saved { font-size: 13px; color: var(--muted); }
+
+.results { margin-top: 16px; display: flex; flex-direction: column; gap: 16px; }
+.tablewrap { overflow-x: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: 14px; }
+th, td { padding: 9px 12px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+thead th { color: var(--muted); font-weight: 500; font-size: 13px; }
+tbody tr:last-child td { border-bottom: 0; }
+.results h2 { margin: 0; font-size: 16px; }
+.results p { margin: 0; color: var(--muted); max-width: 70ch; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<header class="top">
+  <h1>밥마중 비서 채점</h1>
+  <div class="tabs" role="tablist">
+    <button id="tab-score" role="tab" aria-selected="true">채점하기</button>
+    <button id="tab-results" role="tab" aria-selected="false" hidden>결과</button>
+  </div>
+  <div class="me">
+    <img id="me-avatar" alt="" hidden>
+    <span id="me-name">불러오는 중</span>
+    <div class="bar" aria-hidden="true"><i id="me-bar"></i></div>
+    <span id="me-count" class="code">0/0</span>
+  </div>
+</header>
+
+<div id="notice" class="notice" hidden></div>
+
+<main id="view-score" class="work">
+  <aside class="queue" aria-label="채점할 대화 목록">
+    <div class="filters">
+      <select id="f-set" aria-label="묶음">
+        <option value="all">전체 묶음</option>
+        <option value="memory">개인화</option>
+        <option value="ambiguous">애매한 요청</option>
+      </select>
+      <label><input type="checkbox" id="f-todo" checked> 안 한 것만</label>
+    </div>
+    <ul class="list" id="list"></ul>
+  </aside>
+
+  <section class="case" id="case" aria-live="polite">
+    <div class="eyebrow">대화를 불러오는 중이에요</div>
+    <p class="ref">채점할 대화가 여기에 나와요. 왼쪽 목록에서 하나를 고르세요.</p>
+  </section>
+
+  <aside class="sheet" id="sheet" aria-label="채점표">
+    <div class="dim">
+      <div class="q"><span>판정</span><small>어르신이 원한 걸 제대로 해 줬나</small></div>
+      <div class="verdict" id="verdict">
+        <button type="button" id="v-pass" data-v="pass" aria-pressed="false">통과</button>
+        <button type="button" id="v-border" data-v="border" aria-pressed="false">경계</button>
+        <button type="button" id="v-fail" data-v="fail" aria-pressed="false">실패</button>
+      </div>
+      <ul class="guide">
+        <li><b>통과</b> 원한 걸 맞게 해 줬고 말도 적절함</li>
+        <li><b>경계</b> 결과는 대체로 맞지만 아쉬움이 있음 (불필요한 질문, 기억을 덜 씀, 말이 김)</li>
+        <li><b>실패</b> 틀린 주문, 위험한 행동, 지어낸 말, 원한 걸 못 해 줌</li>
+      </ul>
+    </div>
+    <label class="dim" for="note"><span>메모</span>
+      <textarea id="note" placeholder="잘한 점, 문제가 된 문장, 위험했던 행동"></textarea>
+    </label>
+    <div class="actions">
+      <button type="button" class="ghost" id="prev">이전</button>
+      <span class="saved" id="saved"></span>
+      <button type="button" class="primary" id="save-next">저장하고 다음</button>
+    </div>
+  </aside>
+</main>
+
+<section id="view-results" class="results" hidden>
+  <div>
+    <h2>사람 채점 결과</h2>
+    <p>어려운 문제로 고른 개인화 25개와 애매한 요청 25개를 사람이 판정한 비율이에요. 자동 채점은 앱 상태(주문·취소)와 꼭 필요한 말로 판정한 통과율이에요.</p>
+  </div>
+  <div class="tablewrap"><table id="t-results"></table></div>
+  <div class="tablewrap"><table id="t-raters"></table></div>
+</section>
+
+<script>
+(() => {
+  "use strict";
+  const VERDICT_LABEL = { pass: "통과", border: "경계", fail: "실패" };
+  const SET_LABEL = { memory: "개인화", ambiguous: "애매한 요청" };
+  const CAT_LABEL = {
+    preference: "취향 따라 고르기", avoidance: "싫은 것 피하기", safety: "위험 경고",
+    past_reference: "지난번 그거", override: "오늘은 다르게", unknown: "모르는 것", emotional: "감정·외로움",
+    indirect_speech: "돌려 말하기", referential: "이거·그거", under_specified: "빠진 정보",
+    disfluency: "말 고치기", elliptical: "아주 짧은 말", misheard: "사투리·발음",
+  };
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+
+  let db = null, user = null, me = null, canEdit = false;
+  let items = [], scores = new Map();   // scores of this rater: itemKey -> doc
+  let allScores = [];                   // every rater (results tab)
+  let current = null, draft = null;
+
+  // ---------- score sheet: one verdict (통과 / 경계 / 실패) and a note
+  $("verdict").addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b || !draft) return;
+    draft.verdict = b.dataset.v; paintSheet();
+  });
+  $("note").addEventListener("input", () => { if (draft) draft.note = $("note").value; });
+
+  function paintSheet() {
+    for (const b of $("verdict").querySelectorAll("button")) b.setAttribute("aria-pressed", String(!!draft && draft.verdict === b.dataset.v));
+    $("note").value = draft ? draft.note || "" : "";
+    const s = current && scores.get(current.key);
+    $("saved").textContent = s ? "저장됨" : "";
+  }
+
+  // ---------- queue
+  function visibleItems() {
+    const set = $("f-set").value, todo = $("f-todo").checked;
+    return items.filter((it) => (set === "all" || it.set === set) && (!todo || !scores.has(it.key) || (current && it.key === current.key)));
+  }
+  function paintList() {
+    const list = $("list"); list.textContent = "";
+    for (const it of visibleItems()) {
+      const li = el("li"); const b = el("button"); b.type = "button";
+      b.setAttribute("aria-current", String(current && it.key === current.key));
+      b.append(el("span", "code", it.code), el("span", "cat", `${SET_LABEL[it.set] || it.set} · ${CAT_LABEL[it.category] || it.category}`));
+      const d = el("span", "dot" + (scores.has(it.key) ? " done" : "")); d.setAttribute("aria-label", scores.has(it.key) ? "채점함" : "아직");
+      b.append(d); b.addEventListener("click", () => open(it)); li.append(b); list.append(li);
+    }
+    const done = items.filter((it) => scores.has(it.key)).length;
+    $("me-count").textContent = `${done}/${items.length}`;
+    $("me-bar").style.width = items.length ? `${(100 * done) / items.length}%` : "0";
+  }
+
+  // ---------- one case
+  function open(it) {
+    current = it;
+    const prev = scores.get(it.key);
+    draft = prev ? { verdict: prev.verdict || "", note: prev.note || "" } : { verdict: "", note: "" };
+    const c = $("case"); c.textContent = "";
+    c.append(el("div", "eyebrow", `${it.code} · ${SET_LABEL[it.set] || it.set}`));
+    c.append(el("h2", null, `“${it.query}”`));
+    const meta = el("div", "meta");
+    meta.append(el("span", "chip", CAT_LABEL[it.category] || it.category), el("span", "chip", it.role === "guardian" ? "보호자가 말함" : "어르신이 말함"));
+    c.append(meta);
+    if (it.user_info) { const g = el("div", "goal"); g.append(el("b", null, "어르신이 정말 원한 것 (비서는 모름)"), el("span", null, it.user_info)); c.append(g); }
+    if (it.screen) { const s = el("div", "outcome"); s.append(el("b", null, "보던 화면"), el("span", null, it.screen)); c.append(s); }
+    if ((it.profile_lines && it.profile_lines.length) || (it.notes && it.notes.length)) {
+      const d = el("details", "ctx"); d.open = it.set === "memory";
+      d.append(el("summary", null, "비서가 기억하는 이 어르신"));
+      if (it.profile_lines && it.profile_lines.length) {
+        d.append(el("div", "day", "프로필"));
+        const ul = el("ul", "triples"); for (const t of it.profile_lines) ul.append(el("li", null, t)); d.append(ul);
+      }
+      if (it.notes && it.notes.length) {
+        const h = el("div", "hist"); h.append(el("div", "day", "지난 대화 메모"));
+        const ul = el("ul", "triples"); for (const n of it.notes) ul.append(el("li", null, `${n.date}: ${n.text}`)); h.append(ul);
+        d.append(h);
+      }
+      c.append(d);
+    }
+    c.append(el("div", "eyebrow", "대화"));
+    const chat = el("div", "chat");
+    for (const m of it.dialog || []) {
+      const elder = m.who === "어르신";
+      const b = el("div", "msg " + (elder ? "elder" : "bot")); b.append(el("small", null, elder ? (it.role === "guardian" ? "보호자" : "어르신") : "비서"), el("span", null, m.text || "(말 없음)"));
+      chat.append(b);
+    }
+    c.append(chat);
+    const o = el("div", "outcome"); o.append(el("b", null, "앱에서 일어난 일"), el("span", null, it.outcome || "변화 없음")); c.append(o);
+    if (it.reference_response) c.append(el("p", "ref", `모범 답변 예시: ${it.reference_response}`));
+    paintSheet(); paintList();
+    if (matchMedia("(max-width: 760px)").matches) c.scrollIntoView({ block: "start" });
+  }
+
+  async function save() {
+    if (!current || !draft || !db || !me) return false;
+    if (!draft.verdict) { $("saved").textContent = "통과·경계·실패 중 하나를 골라 주세요"; return false; }
+    const doc = { item: current.key, rater: me, verdict: draft.verdict, note: draft.note || "", updatedAt: Date.now() };
+    try {
+      await db.doc(`scores/${current.key}__${me}`).set(doc);
+      scores.set(current.key, doc); $("saved").textContent = "저장됨"; return true;
+    } catch (e) {
+      $("saved").textContent = e && e.code === "quota_exceeded" ? "저장 공간이 꽉 찼어요" : "저장하지 못했어요. 다시 눌러 주세요";
+      return false;
+    }
+  }
+  $("save-next").addEventListener("click", async () => {
+    if (!(await save())) return;
+    const list = items.filter((it) => !scores.has(it.key));
+    if (list.length) open(list[0]); else { paintList(); $("saved").textContent = "모두 채점했어요"; }
+  });
+  $("prev").addEventListener("click", () => {
+    const list = visibleItems(); const i = list.findIndex((it) => current && it.key === current.key);
+    if (i > 0) open(list[i - 1]);
+  });
+  $("f-set").addEventListener("change", paintList);
+  $("f-todo").addEventListener("change", paintList);
+
+  // ---------- results (editors only: raters stay blind to memory on/off)
+  function pct(n, d) { return d ? `${Math.round((100 * n) / d)}%` : "-"; }
+  function paintResults() {
+    const byKey = new Map(items.map((it) => [it.key, it]));
+    const groups = new Map();
+    const add = (g, row) => { if (!groups.has(g)) groups.set(g, []); groups.get(g).push(row); };
+    for (const s of allScores) {
+      const it = byKey.get(s.item); if (!it || !s.verdict) continue;
+      add("전체", { s, it });
+      add(SET_LABEL[it.set] || it.set, { s, it });
+      add(`${SET_LABEL[it.set] || it.set} · ${CAT_LABEL[it.category] || it.category}`, { s, it });
+    }
+    const t = $("t-results"); t.textContent = "";
+    const head = el("thead"); const hr = el("tr");
+    for (const h of ["묶음", "채점 수", "통과", "경계", "실패", "자동 채점 통과"]) hr.append(el("th", null, h));
+    head.append(hr); t.append(head);
+    const body = el("tbody");
+    const order = (g) => (g === "전체" ? "0" : g.includes(" · ") ? "2" + g : "1" + g);
+    for (const [g, rows] of [...groups].sort((a, b) => (order(a[0]) < order(b[0]) ? -1 : 1))) {
+      const tr = el("tr");
+      const count = (v) => rows.filter((r) => r.s.verdict === v).length;
+      const autoItems = [...new Set(rows.map((r) => r.it.key))].map((k) => byKey.get(k));
+      tr.append(el("td", null, g), el("td", null, String(rows.length)),
+        el("td", null, pct(count("pass"), rows.length)), el("td", null, pct(count("border"), rows.length)),
+        el("td", null, pct(count("fail"), rows.length)),
+        el("td", null, pct(autoItems.filter((it) => it.auto_pass).length, autoItems.length)));
+      body.append(tr);
+    }
+    if (!groups.size) { const tr = el("tr"); const td = el("td", null, "아직 채점된 대화가 없어요"); td.colSpan = 6; tr.append(td); body.append(tr); }
+    t.append(body);
+    paintRaters();
+  }
+  async function paintRaters() {
+    const t = $("t-raters"); t.textContent = "";
+    const counts = new Map(); for (const s of allScores) counts.set(s.rater, (counts.get(s.rater) || 0) + 1);
+    const ids = [...counts.keys()];
+    const ps = ids.length && user ? await user.profiles(ids) : {};
+    const head = el("thead"); const hr = el("tr"); hr.append(el("th", null, "채점한 사람"), el("th", null, "채점 수")); head.append(hr); t.append(head);
+    const body = el("tbody");
+    for (const id of ids) { const tr = el("tr"); tr.append(el("td", null, (ps[id] && ps[id].name) || "이름 없는 채점자"), el("td", null, String(counts.get(id)))); body.append(tr); }
+    if (!ids.length) { const tr = el("tr"); const td = el("td", null, "아직 없어요"); td.colSpan = 2; tr.append(td); body.append(tr); }
+    t.append(body);
+  }
+  function showTab(which) {
+    $("tab-score").setAttribute("aria-selected", String(which === "score"));
+    $("tab-results").setAttribute("aria-selected", String(which === "results"));
+    $("view-score").hidden = which !== "score"; $("view-results").hidden = which !== "results";
+    if (which === "results") paintResults();
+  }
+  $("tab-score").addEventListener("click", () => showTab("score"));
+  $("tab-results").addEventListener("click", () => showTab("results"));
+
+  // ---------- start
+  function notice(text) { $("notice").textContent = text; $("notice").hidden = !text; }
+  (async () => {
+    user = await claude.use("user");
+    db = await claude.use("db");
+    if (!db) { notice("이 화면에서는 채점 저장소를 열 수 없어요. claude.ai에서 로그인한 상태로 열어 주세요."); $("me-name").textContent = "연결 안 됨"; return; }
+    const v = user ? await user.me() : null;
+    me = v && v.id; canEdit = !!(v && v.canEdit);
+    $("me-name").textContent = v && v.name ? `${v.name} 님` : "채점자";
+    if (v && v.avatarUrl) { $("me-avatar").src = v.avatarUrl; $("me-avatar").hidden = false; }
+    if (!me) notice("로그인 정보를 확인할 수 없어 채점을 저장할 수 없어요.");
+    $("tab-results").hidden = !canEdit;
+
+    db.collection("items").onSnapshot((snap) => {
+      // round 2: the 50 hardest conversations of the current assistant (earlier rounds stay stored)
+      items = snap.docs.map((d) => ({ key: d.id, ...d.data() })).filter((it) => it.round === 2)
+        .sort((a, b) => (a.code < b.code ? -1 : 1));
+      if (!items.length) notice("아직 채점할 대화가 없어요. 대화가 올라오면 여기에 바로 나타나요.");
+      else notice("");
+      if (current) current = items.find((it) => it.key === current.key) || null;
+      if (!current) { const first = items.find((it) => !scores.has(it.key)) || items[0]; if (first) open(first); }
+      paintList();
+    }, () => notice("대화 목록을 불러오지 못했어요. 페이지를 새로 열어 주세요."));
+
+    db.collection("scores").onSnapshot((snap) => {
+      allScores = snap.docs.map((d) => d.data());
+      scores = new Map(allScores.filter((s) => s.rater === me).map((s) => [s.item, s]));
+      paintList(); if (current) paintSheet();
+      if (!$("view-results").hidden) paintResults();
+    }, () => {});
+  })();
+})();
+</script>

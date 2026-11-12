@@ -121,11 +121,18 @@
     return c >= 0xac00 && c <= 0xd7a3 ? (c - 0xac00) % 28 !== 0 : null;
   }
   function subj(word) { const b = hasBatchim(word); return b === null ? "이(가)" : (b ? "이" : "가"); }
-  function yesNo(text) {  // mirrors assistant/confirm.py (no wins, unclear is not yes)
-    const t = " " + String(text || "").toLowerCase().replace(/\s+/g, " ").trim() + " ";
+  function yesNo(text, question) {  // mirrors assistant/confirm.py (no wins, unclear is not yes)
+    let t = " " + String(text || "").toLowerCase().replace(/\s+/g, " ").trim() + " ";
     if (!t.trim()) return "unclear";
-    const no = ["아니", "안 ", "안해", "안 해", "안할", "안 할", "하지 마", "하지마", "싫", "됐어", "그만", "취소",
+    t = t.replace(/안 ?(맵|짜|달|뜨겁|차갑|싱겁|딱딱하|질기)게/g, " ");  // "안 맵게" is how, not a no
+    let no = ["아니", "안 ", "안해", "안 해", "안할", "안 할", "하지 마", "하지마", "싫", "됐어", "그만", "취소",
       "다음에", "나중에", "잠깐", "말고", "필요 없", "괜찮아", "no", "cancel", "stop"];
+    // answering "…취소할까요?" with "응, 취소해 줘" agrees with the question
+    if (/취소|cancel/.test(String(question || "").toLowerCase())) {
+      no = no.filter((w) => w !== "취소" && w !== "cancel");
+      if (no.some((w) => t.includes(w))) return "no";
+      if (/취소|cancel/.test(t)) return "yes";
+    }
     if (no.some((w) => t.includes(w))) return "no";
     const yes = ["네", "예", "응", "어 ", "그래", "좋아", "해 줘", "해줘", "해 주세요", "해주세요", "주문해", "맞아",
       "오케이", "알았어", "알겠어", "부탁", "yes", "ok"];
@@ -183,7 +190,7 @@
           key: id + "|cancel-confirm",
           speak: "주문을 취소할까요? 네, 또는 아니요로 말씀해 주세요.",
           hint: "주문을 취소할까요?",
-          local: { yes: () => click('[data-testid="btn-cancel-yes"]'), no: () => click('[data-testid="btn-cancel-no"]') },
+          local: { question: "주문을 취소할까요?", yes: () => click('[data-testid="btn-cancel-yes"]'), no: () => click('[data-testid="btn-cancel-no"]') },
         };
       }
       const body = join([txt("proxy-text") || txt("proxy-order-notice"), txt("arrival-banner"),
@@ -271,7 +278,7 @@
   function onLocalAnswer(text) {
     const intent = localIntent;
     localIntent = null;
-    const verdict = yesNo(text);
+    const verdict = yesNo(text, intent && intent.question);
     if (intent && verdict === "yes") { intent.yes(); setState(""); afterPlayback(); return; }
     if (intent && verdict === "no") { intent.no(); setState(""); afterPlayback(); return; }
     if (text) {  // something else ("다른 거 볼래") -> the assistant handles it

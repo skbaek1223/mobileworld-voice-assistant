@@ -70,6 +70,12 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--tts-voice", default="cedar")
     p.add_argument("--neulbab-app-dir", default=None, help="default: $NEULBAB_APP_DIR")
     p.add_argument("--state-file", default=None, help="keep the family's orders/settings here")
+    p.add_argument(
+        "--memory-file",
+        default=None,
+        help="what the assistant remembers about 어르신 (default: next to --state-file)",
+    )
+    p.add_argument("--no-learn", dest="learn", action="store_false", help="do not update the memory")
     p.add_argument("--access-code", default=None, help="default: a random 6-digit code")
     p.add_argument(
         "--no-access-code", action="store_true", help="anyone who can reach it may use it"
@@ -117,13 +123,22 @@ def main(argv: list[str] | None = None) -> None:
         api_key=api_key,
         reasoning_effort=args.reasoning_effort,
         filler_after_sec=None if args.filler_after < 0 else args.filler_after,
+        learn_memory=args.learn,
     )
     if args.no_access_code:
         cfg.access_code = None
     elif args.access_code:
         cfg.access_code = args.access_code
 
-    family = Family(MockNeulbabApp(load_data(args.neulbab_app_dir), state_file=args.state_file))
+    from mobile_world.assistant.neulbab.memory import MemoryStore
+
+    memory_file = args.memory_file or (
+        str(Path(args.state_file).with_suffix(".memory.json")) if args.state_file else None
+    )
+    family = Family(
+        MockNeulbabApp(load_data(args.neulbab_app_dir), state_file=args.state_file),
+        MemoryStore(memory_file),
+    )
     voice = OpenAIVoice(
         api_key,
         config=VoiceConfig(
@@ -143,7 +158,7 @@ def main(argv: list[str] | None = None) -> None:
         cert, key = args.ssl_certfile, args.ssl_keyfile
     scheme = "https" if cert else "http"
     url = f"{scheme}://{ip}:{args.port}/"
-    logger.info(f"늘밥 음성 비서: {url}   접속 코드: {cfg.access_code or '(없음)'}")
+    logger.info(f"밥마중 음성 비서: {url}   접속 코드: {cfg.access_code or '(없음)'}")
     logger.info(f"목소리: {voice.config.tts_model} / {voice.config.tts_voice}")
     if cfg.access_code and app_dir:
         logger.info(f"접속 번호를 미리 넣은 주소: {url}?code={cfg.access_code}")

@@ -218,3 +218,104 @@ def test_vague_checks_catch_wrong_behaviour(vague, data):
     # anything that names a kind of food, a past order, the screen or a menu must fail
     assert {"PV02-soft-food", "PV03-fish", "PV04-porridge", "PV05-same-as-last", "PV09-first-one",
             "PV11-hesitation", "PV16-garbled", "PV17-daughter-ordered", "PV20-full"} <= wrong  # fmt: skip
+
+
+# ------------------------------------------------------------------ memory / ambiguity benchmark
+def test_memory_section_and_router_defer_to_llm():
+    from mobile_world.assistant.neulbab.fast_paths import build_router
+    from mobile_world.assistant.neulbab.memory import memory_section, with_memory
+
+    mem = {"profile": {"likes": ["가자미조림 정식"], "allergies": ["새우"]},
+           "notes": [{"date": "11월 3일", "text": "가자미조림이 맛있었다고 하심"}]}
+    text = memory_section(mem)
+    assert "좋아하는 음식: 가자미조림 정식" in text and "11월 3일: 가자미조림이 맛있었다고 하심" in text
+    assert memory_section(None) == "" and with_memory(lambda: "A", None)() == "A"
+    assert with_memory(lambda: "A", mem)().startswith("A\n")
+    assert "새우" in with_memory(lambda: "A", lambda: mem)()  # a live store
+
+    class Ctx:
+        def tool(self, *a, **k):
+            raise AssertionError("must not run the generic recommendation")
+
+    assert build_router("parent", {}, personalized=True)("뭐 먹지?", Ctx()) is None
+
+
+def test_memory_update_applies_llm_ops_and_keeps_the_rest(tmp_path):
+    from mobile_world.assistant.neulbab.memory import MemoryStore, apply_ops, update_memory
+
+    mem = {"profile": {"likes": ["고등어구이 정식"], "allergies": ["새우"]}, "notes": []}
+    reply = (
+        '{"ops": [{"op": "remove", "field": "likes", "value": "고등어구이 정식"},'
+        ' {"op": "add", "field": "dislikes", "value": "고등어구이 정식"},'
+        ' {"op": "set", "field": "teeth", "value": "틀니"},'
+        ' {"op": "add", "field": "nonsense", "value": "x"},'
+        ' {"op": "note", "text": "고등어가 비리다고 하심"}]}'
+    )
+    seen = []
+    new = update_memory(mem, [("어르신", "고등어 비려서 이제 싫어"), ("비서", "네")],
+                        lambda p: seen.append(p) or reply, "11월 5일")
+    p = new["profile"]
+    assert p["likes"] == [] and p["dislikes"] == ["고등어구이 정식"] and p["teeth"] == "틀니"
+    assert p["allergies"] == ["새우"] and "nonsense" not in p  # untouched / unknown ignored
+    assert new["notes"] == [{"date": "11월 5일", "text": "고등어가 비리다고 하심", "source": "어르신"}]
+    assert "고등어 비려서" in seen[0]
+    assert apply_ops(new, [{"op": "note", "text": "고등어가 비리다고 하심"}])["notes"] == new["notes"]
+
+    store = MemoryStore(tmp_path / "m.json")
+    store.learn([("어르신", "고등어 비려")], lambda p: reply, "11월 5일", "어르신")
+    assert MemoryStore(tmp_path / "m.json").get()["profile"]["teeth"] == "틀니"  # saved
+
+
+def test_generated_sets_pass_with_reference_plans():
+    from mobile_world.assistant.neulbab.evaluation import (
+        DEFAULT_CONTRACT, load_tasks, reference_factory, run_task,
+    )
+    from mobile_world.assistant.neulbab import load_data
+
+    data = load_data(None)
+    for name in ("eval_memory.json", "eval_ambiguous.json"):
+        tasks = load_tasks(DEFAULT_CONTRACT.with_name(name))
+        assert len(tasks) >= 40
+        from mobile_world.assistant.neulbab.memory import _allergy_hit, normalize
+
+        for t in tasks:
+            # a few generated reference plans order a menu the memory lists as an allergen
+            # (e.g. 전복죽 with 조개류); the assistant now refuses those, so skip their plans
+            allergies = normalize(t.get("memory"))["profile"]["allergies"]
+            ref_menus = [data.menu(s["args"]["menu_id"]) for s in t["reference"] if s.get("tool") == "prepare_order"]
+            if any(_allergy_hit(a, m) for a in allergies for m in ref_menus):
+                continue
+            r = run_task(t, data, reference_factory)
+            assert r.success and not r.safety, (t["id"], r.failures, r.safety)
+        if name == "eval_memory.json":
+            assert all(t.get("memory", {}).get("profile") for t in tasks)
+
+
+def test_cancel_answer_is_yes_and_order_notes_from_memory():
+    from mobile_world.assistant.confirm import classify_yes_no
+    from mobile_world.assistant.neulbab import load_data
+    from mobile_world.assistant.neulbab.memory import make_confirm_note
+
+    q = "된장찌개 정식 주문을 취소할까요?"
+    assert classify_yes_no("응, 그거 바로 취소해 줘.", "ko", q) == "yes"
+    assert classify_yes_no("아니, 취소하지 마", "ko", q) == "no"
+    assert classify_yes_no("취소", "ko", "주문할까요?") == "no"  # elsewhere it still refuses
+    assert classify_yes_no("응, 그래, 안 맵게 주문해줘.", "ko", "주문할까요?") == "yes"  # how, not a no
+    assert classify_yes_no("안 할래", "ko", "주문할까요?") == "no"
+
+    data = load_data(None)
+    mem = {"profile": {"allergies": ["조개류"], "doctor_advice": ["짠 음식 줄이기"],
+                       "speech": "숫자는 한 번 더 말해 주세요"},
+           "notes": [{"date": "11월 3일", "text": "국은 싱겁게 해 달라고 하심"}]}
+    note = make_confirm_note(data, mem)
+    q1 = note("prepare_order", {"menu_name": "전복죽", "price_text": "10,000원",
+                                "confirm_question": "전복죽, 10,000원이에요. 주문할까요?"}, "죽 줘")
+    assert q1 == {"block": "전복죽 conflicts with the remembered allergy (조개류)."}
+    mem["profile"]["allergies"] = ["갑각류(새우)"]
+    q0 = note("prepare_order", {"menu_name": "들깨미역국 정식", "price_text": "8,500원",
+                                "confirm_question": "들깨미역국 정식, 8,500원이에요. 주문할까요?"}, "")
+    assert "알레르기" not in q0 and q0.endswith("다시 말씀드리면 8,500원이에요. 주문할까요?")  # "고소하게" is not 게
+    q2 = note("prepare_order", {"menu_name": "된장찌개 정식", "price_text": "8,000원",
+                                "confirm_question": "된장찌개 정식, 8,000원이에요. 주문할까요?"}, "된장찌개")
+    assert "조금 짤 수 있어요" in q2 and "전달이 안 돼요" in q2
+    assert note("cancel_order", {"confirm_question": "X"}, "") == "X"

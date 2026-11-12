@@ -27,6 +27,8 @@ import re
 import secrets
 import threading
 from collections.abc import Callable
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -47,6 +49,14 @@ from loguru import logger
 from mobile_world.assistant.device import ToolsOnlyDevice
 from mobile_world.assistant.neulbab import BRAND, PROMPT_EXAMPLES, MockNeulbabApp, build_toolset
 from mobile_world.assistant.neulbab.fast_paths import build_router
+from mobile_world.assistant.neulbab.memory import (
+    MEMORY_RULE,
+    make_confirm_note,
+    MemoryStore,
+    is_empty,
+    normalize,
+    with_memory,
+)
 from mobile_world.assistant.neulbab.toolset import (
     build_context_provider,
     commit_tools,
@@ -57,6 +67,7 @@ from mobile_world.assistant.session import VoiceAssistantSession
 from mobile_world.assistant.speech import SpeechToText, TextToSpeech
 
 STATIC_DIR = Path(__file__).with_name("static")
+KST = ZoneInfo("Asia/Seoul")
 ROLES = ("parent", "guardian")
 ANSWER_TIMEOUT_SEC = 20.0  # how long to wait for a reply to the assistant's question
 VOICE_PAGES = {"parent.html": "parent", "child.html": "guardian"}  # 늘밥 pages that get a mic
@@ -286,13 +297,25 @@ class WebConfig:
     reasoning_effort: str | None = "minimal"
     access_code: str | None = field(default_factory=lambda: f"{secrets.randbelow(10**6):06d}")
     filler_after_sec: float | None = 1.0
+    learn_memory: bool = True  # update the 어르신 memory after each conversation
+
+    @property
+    def learn(self):
+        """chat(prompt) -> text used by the memory update (None: no learning)."""
+        if not (self.learn_memory and self.api_key):
+            return None
+        from mobile_world.assistant.neulbab.benchmark import LLMConfig
+
+        llm = LLMConfig(self.model_name, self.llm_base_url, self.api_key, reasoning_effort="minimal")
+        return lambda prompt: llm.chat([{"role": "user", "content": prompt}])
 
 
 class Family:
     """The shared mock app. Tool calls from several phones are serialized with a lock."""
 
-    def __init__(self, app: MockNeulbabApp):
+    def __init__(self, app: MockNeulbabApp, memory: MemoryStore | None = None):
         self.app = app
+        self.memory = memory or MemoryStore(None)  # what the assistant remembers about 어르신
         self.lock = threading.RLock()
         self.version = 0
         self.connections: set[Connection] = set()
@@ -420,6 +443,7 @@ class Connection:
         self, ws: WebSocket, role: str, family: Family, cfg: WebConfig, voice, agent_factory
     ):
         self.ws, self.role, self.family, self.voice = ws, role, family, voice
+        self.learn = cfg.learn  # chat(prompt) -> text for the memory update, or None
         self.loop = asyncio.get_running_loop()
         self.pool = ThreadPoolExecutor(max_workers=4)
         self.busy = threading.Event()
@@ -441,9 +465,12 @@ class Connection:
             tools=tools,
             app_name=BRAND,
             tool_wait_time=0.0,
-            router=build_router(role, app.errors),
-            context_provider=self._context,
+            router=build_router(
+                role, app.errors, personalized=lambda: not is_empty(family.memory.get())
+            ),
+            context_provider=with_memory(self._context, family.memory.get),
             commit_tools=commit_tools(app, role),
+            confirm_note=make_confirm_note(app.data, family.memory.get),
             filler_after_sec=cfg.filler_after_sec,
         )
 
@@ -459,6 +486,7 @@ class Connection:
             self.send({"type": "thinking"})
             result = self.session.handle_request(text)
             self.send({"type": "done", "status": result.status, "reply": result.reply})
+            self._remember(text)
             self.family.broadcast()  # every phone's 늘밥 screen shows the change
             self.send(self.family.state(self.role))
         except Exception as e:  # never let a turn kill the connection
@@ -466,6 +494,19 @@ class Connection:
             self.send({"type": "error", "message": str(e)})
         finally:
             self.busy.clear()
+
+    def _remember(self, request: str) -> None:
+        """Update the memory from this request's conversation, in the background."""
+        if not self.learn:
+            return
+        speaker = "어르신" if self.role == "parent" else "보호자"
+        dialog = [(speaker, request)] + [
+            (speaker if who == "User" else "비서", t) for who, t in self.session._dialog
+        ]
+        today = datetime.now(KST).strftime("%-m월 %-d일")
+        threading.Thread(
+            target=self.family.memory.learn, args=(dialog, self.learn, today, speaker), daemon=True
+        ).start()
 
     def utterance(self, text: str) -> None:
         text = (text or "").strip()
@@ -543,7 +584,7 @@ def create_app(
                 app_name=BRAND,
                 tools=tools.schemas(),
                 gui=False,
-                extra_instructions=role_instructions(role),
+                extra_instructions=role_instructions(role) + MEMORY_RULE,
                 reasoning_effort=cfg.reasoning_effort,
                 **PROMPT_EXAMPLES,
             )
@@ -552,6 +593,26 @@ def create_app(
 
     def code_ok(code: str | None) -> bool:
         return cfg.access_code is None or secrets.compare_digest(code or "", cfg.access_code)
+
+    @app.get("/api/memory")
+    def get_memory(code: str = ""):
+        if not code_ok(code):
+            return JSONResponse({"ok": False}, status_code=403)
+        return JSONResponse({"ok": True, "memory": family.memory.get()})
+
+    @app.put("/api/memory")
+    async def put_memory(request: Request, code: str = ""):
+        """The guardian edited the memory on /voice/memory.html."""
+        if not code_ok(code):
+            return JSONResponse({"ok": False}, status_code=403)
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"ok": False, "error": "bad json"}, status_code=400)
+        memory = body.get("memory") if isinstance(body, dict) else None
+        if not isinstance(memory, dict):
+            return JSONResponse({"ok": False, "error": "no memory"}, status_code=400)
+        return JSONResponse({"ok": True, "memory": family.memory.replace(normalize(memory))})
 
     @app.get("/api/check")
     def check(code: str = ""):

@@ -36,8 +36,13 @@ def _say(res: dict) -> str:
     return res.get("say") or res.get("error", {}).get("message", "")
 
 
-def build_router(role: str, errors: dict[str, str]) -> Route:
-    """``errors``: the contract's error messages (code -> sentence)."""
+def build_router(role: str, errors: dict[str, str], personalized=False) -> Route:
+    """``errors``: the contract's error messages (code -> sentence).
+
+    ``personalized``: the assistant has a memory of this user, so suggestions ("뭐 먹지?") go to
+    the LLM, which can use what they liked before instead of the generic top-3. A function
+    is asked on every request (a memory that fills up while the app runs).
+    """
 
     def status(ctx) -> dict:
         return ctx.tool("get_order_status")
@@ -107,7 +112,8 @@ def build_router(role: str, errors: dict[str, str]) -> Route:
             last = names[-1]
             return f"최근 주문은 {', '.join(names)}{copula(last)}."
 
-        if _RECOMMEND.search(text):
+        remembers = personalized() if callable(personalized) else personalized
+        if _RECOMMEND.search(text) and not remembers:
             res = ctx.tool("get_recommendations")
             if not res.get("ok") or not res["data"]["menus"]:
                 return _say(res)

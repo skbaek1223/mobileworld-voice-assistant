@@ -25,13 +25,28 @@ def _norm(text: str) -> str:
     return " " + re.sub(r"\s+", " ", (text or "").lower()).strip() + " "
 
 
-def classify_yes_no(text: str, language: str = "ko") -> str:
-    """'yes' | 'no' | 'unclear'."""
+_CANCEL_WORDS = ("취소", "cancel")
+_MODIFIER = re.compile(r"안 ?(맵|짜|달|뜨겁|차갑|싱겁|딱딱하|질기)게")
+
+
+def classify_yes_no(text: str, language: str = "ko", question: str = "") -> str:
+    """'yes' | 'no' | 'unclear'.
+
+    ``question``: what was asked. When it asks about cancelling ("…취소할까요?"), the word
+    취소 in the answer ("응, 취소해 줘") agrees with the question instead of refusing."""
     t = _norm(text)
     if not t.strip():
         return "unclear"
+    # "안 맵게 / 안 짜게 / 안 달게" describe how they want it, not a refusal
+    t = _MODIFIER.sub(" ", t)
     lang = language if language in _NO else "en"
     words = _NO[lang] + (_NO["en"] if lang != "en" else [])
+    if any(w in (question or "").lower() for w in _CANCEL_WORDS):
+        words = [w for w in words if w not in _CANCEL_WORDS]
+        if any(w in t for w in words):
+            return "no"
+        if any(w in t for w in _CANCEL_WORDS):
+            return "yes"
     if any(w in t for w in words):
         return "no"
     yes = _YES[lang] + (_YES["en"] if lang != "en" else [])

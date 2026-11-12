@@ -33,7 +33,15 @@ from loguru import logger
 from mobile_world.assistant.device import ToolsOnlyDevice
 from mobile_world.assistant.neulbab import BRAND
 from mobile_world.assistant.neulbab.data import NeulbabData, load_data
+from mobile_world.assistant.neulbab.benchmark import (
+    JUDGE_DIMS,
+    JUDGE_LABELS,
+    LLMConfig,
+    SimulatedUser,
+    judge_run,
+)
 from mobile_world.assistant.neulbab.fast_paths import build_router
+from mobile_world.assistant.neulbab.memory import MEMORY_RULE, make_confirm_note, with_memory
 from mobile_world.assistant.neulbab.mock_app import DEFAULT_CONTRACT, MockNeulbabApp
 from mobile_world.assistant.neulbab.toolset import (
     PROMPT_EXAMPLES,
@@ -60,22 +68,26 @@ WRITE_TOOLS = COMMIT_TOOLS | {"acknowledge_arrival"}
 class ScriptedUser(SpeechToText):
     """Answers the assistant's questions from the task's ``user_replies``, then stays silent."""
 
-    def __init__(self, replies: list[str]):
+    def __init__(self, replies: list[str], log: list | None = None):
         self.replies = list(replies)
         self.heard: list[str] = []
+        self.log = log if log is not None else []
 
     def listen(self, prompt: str | None = None) -> str:
         reply = self.replies.pop(0) if self.replies else ""
         self.heard.append(reply)
+        self.log.append(("어르신", reply))
         return reply
 
 
 class Transcript(TextToSpeech):
-    def __init__(self):
+    def __init__(self, log: list | None = None):
         self.said: list[str] = []
+        self.log = log if log is not None else []  # (speaker, text) of the whole conversation
 
     def speak(self, text: str) -> None:
         self.said.append(text)
+        self.log.append(("비서", text))
 
 
 class FrozenClock:
@@ -285,6 +297,14 @@ def _check_expect(exp: dict, run: dict, app: MockNeulbabApp, before: dict) -> li
         )
         if asked > exp["max_agent_questions"]:
             fails.append(f"asked {asked} questions, at most {exp['max_agent_questions']} allowed")
+    if "agent_asked" in exp:  # the assistant's own clarifying question (not a confirmation)
+        own = any(
+            a.get("action_type") == "ask_user" and not a.get("by")
+            for t in run["turn_actions"]
+            for a in t
+        )
+        if own != exp["agent_asked"]:
+            fails.append(f"asked a clarifying question: {own}, expected {exp['agent_asked']}")
     if "asked_user" in exp:
         asked = any(a.get("action_type") == "ask_user" for t in run["turn_actions"] for a in t)
         if asked != exp["asked_user"]:
@@ -343,6 +363,8 @@ class TaskResult:
     llm_calls: int = 0
     first_speech_sec: float | None = None  # mean over turns: request -> first sound
     routed_turns: int = 0
+    judge: dict = field(default_factory=dict)  # ElderBench Level-2 scores (1–5) when judged
+    dialog: list = field(default_factory=list)  # [(speaker, text)] of the whole conversation
 
 
 def _with_screen(provider, task: dict):
@@ -359,7 +381,12 @@ def run_task(
     agent_factory,
     contract: Path = DEFAULT_CONTRACT,
     features: dict | None = None,
+    user_sim: LLMConfig | None = None,
+    judge: LLMConfig | None = None,
 ) -> TaskResult:
+    """``user_sim``: an LLM answers the assistant's questions from ``task['user_info']``
+    (MobileWorld-style user agent) instead of the scripted ``user_replies``.
+    ``judge``: score the conversation with the ElderBench Level-2 judge."""
     features = {**FEATURES, **(features or {})}
     app, _clock = build_app(data, task, contract)
     before = {"orders": copy.deepcopy(app.orders), "settings": copy.deepcopy(app.settings)}
@@ -386,7 +413,13 @@ def run_task(
     agent = agent_factory(task, tools, role)
     replies = task.get("user_replies", [])
     flat = [] if replies and isinstance(replies[0], list) else replies
-    user, tts = ScriptedUser(flat), Transcript()
+    dialog: list[tuple[str, str]] = []
+    tts = Transcript(dialog)
+    # memory tasks use an agreeable scripted 어르신 ("네"): a simulated user who explains their
+    # allergy or likes when asked would let a memory-less assistant pass
+    simulated = bool(user_sim and task.get("user_info") and task.get("simulate", True))
+    user = SimulatedUser(task, tts, user_sim, dialog) if simulated else ScriptedUser(flat, dialog)
+    memory = task.get("memory")
     guard = AppScopeGuard(
         app.contract["package"], app_name=BRAND, tool_names=tools.names, allow_gui=False
     )
@@ -400,12 +433,17 @@ def run_task(
         app_name=BRAND,
         max_steps=task.get("max_steps", 15),
         tool_wait_time=0.0,
-        router=build_router(role, app.errors) if features["router"] else None,
+        router=build_router(role, app.errors, personalized=bool(memory))
+        if features["router"]
+        else None,
         # snapshot reads use the untraced call: they are not the agent's tool calls
-        context_provider=_with_screen(build_context_provider(app, role, call=original), task)
+        context_provider=with_memory(
+            _with_screen(build_context_provider(app, role, call=original), task), memory
+        )
         if features["prefetch"]
         else None,
         commit_tools=commit_tools(app, role) if features["session_confirm"] else None,
+        confirm_note=make_confirm_note(data, memory) if memory else None,
         filler_after_sec=None,  # fillers are time-based; first_speech_sec measures real replies
     )
     start = time.time()
@@ -415,8 +453,9 @@ def run_task(
         per_turn = task.get("user_replies", [])
         per_turn = per_turn if per_turn and isinstance(per_turn[0], list) else None
         for i, utterance in enumerate(task["turns"]):
-            if per_turn is not None:  # replies scoped to each turn
+            if per_turn is not None and not simulated:  # replies scoped to each turn
                 user.replies = list(per_turn[i]) if i < len(per_turn) else []
+            dialog.append(("어르신", utterance))
             if hasattr(agent, "set_turn"):
                 agent.set_turn(i)
             result = session.handle_request(utterance)
@@ -438,6 +477,7 @@ def run_task(
         "turn_actions": turn_actions,
     }
     fails = [f"crashed: {error}"] if error else check_task(task, run, app, before)
+    scores = judge_run(task, dialog, _outcome(app, before), judge) if judge and not error else {}
     return TaskResult(
         id=task["id"],
         role=role,
@@ -457,11 +497,34 @@ def run_task(
         llm_calls=llm_calls,
         first_speech_sec=round(sum(first_speech) / len(first_speech), 2) if first_speech else None,
         routed_turns=routed_turns,
+        judge=scores,
+        dialog=dialog,
     )
 
 
+def _outcome(app: MockNeulbabApp, before: dict) -> str:
+    """What changed in the app, in words for the judge."""
+    new = app.orders[len(before["orders"]) :]
+    parts = [f"ordered {o['menuName']}" for o in new] or ["no new order"]
+    latest = app.orders[-1] if app.orders else None
+    if latest and latest.get("cancelled") and not (before["orders"] and before["orders"][-1].get("cancelled")):
+        parts.append(f"cancelled {latest['menuName']}")
+    b, a = before["settings"] or {}, app.settings or {}
+    changed = sorted(k for k in set(b) | set(a) if k != "updatedAt" and b.get(k) != a.get(k))
+    if changed:
+        parts.append("settings changed: " + ", ".join(f"{k}={a.get(k)}" for k in changed))
+    return "; ".join(parts)
+
+
 def load_tasks(path: Path = DEFAULT_TASKS, only: list[str] | None = None) -> list[dict]:
-    tasks = json.loads(Path(path).read_text(encoding="utf-8"))["tasks"]
+    doc = json.loads(Path(path).read_text(encoding="utf-8"))
+    tasks = doc["tasks"]
+    profiles = doc.get("profiles", {})
+    for t in tasks:  # memory tasks name a profile: its memory and persona come with it
+        prof = profiles.get(t.get("profile", ""))
+        if prof:
+            t.setdefault("memory", prof.get("memory"))
+            t.setdefault("persona", prof.get("persona", ""))
     if only:
         tasks = [t for t in tasks if any(t["id"].startswith(p) for p in only)]
     return tasks
@@ -490,7 +553,8 @@ def llm_factory(
             app_name=BRAND,
             tools=tools.schemas(),
             gui=False,
-            extra_instructions=role_instructions(role, f["prefetch"], f["session_confirm"]),
+            extra_instructions=role_instructions(role, f["prefetch"], f["session_confirm"])
+            + (MEMORY_RULE if task.get("memory") else ""),
             reasoning_effort=reasoning_effort,
             **PROMPT_EXAMPLES,
         )
@@ -528,6 +592,16 @@ def summarize(results: list[TaskResult]) -> str:
             f"{mean([r.llm_calls for r in rs])} | {mean([r.first_speech_sec for r in rs])} | "
             f"{mean([r.duration_sec for r in rs])} | {sum(r.routed_turns for r in rs)} |"
         )
+    judged = [r for r in results if r.judge]
+    if judged:
+        lines += ["", "LLM 심판 점수 (ElderBench Level 2, 1–5점):", ""]
+        lines += ["| 묶음 | " + " | ".join(JUDGE_LABELS[d] for d in JUDGE_DIMS) + " |"]
+        lines += ["|---|" + "---|" * len(JUDGE_DIMS)]
+        cats = sorted({r.category for r in judged})
+        for name in ["전체", *cats]:
+            rs = judged if name == "전체" else [r for r in judged if r.category == name]
+            cells = [mean([r.judge.get(d) for r in rs]) for d in JUDGE_DIMS]
+            lines.append(f"| {name} | " + " | ".join(cells) + " |")
     failed = [r for r in results if not r.success or r.safety]
     if failed:
         lines += ["", "실패·위반 과제:"]
@@ -563,6 +637,19 @@ def main(argv: list[str] | None = None) -> int:
         help="the agent asks confirmations itself (old design)",
     )
     p.add_argument("--workers", type=int, default=1, help="tasks run in parallel")
+    p.add_argument(
+        "--user-model",
+        help="LLM that plays the 어르신 for tasks with user_info (else scripted replies)",
+    )
+    p.add_argument("--user-base-url", default=None)
+    p.add_argument("--user-api-key", default=None)
+    p.add_argument(
+        "--no-memory", dest="memory", action="store_false",
+        help="ablation: run memory tasks without the user's memory",
+    )
+    p.add_argument("--judge-model", help="LLM judge (ElderBench Level 2), e.g. gpt-4o")
+    p.add_argument("--judge-base-url", default="https://api.openai.com/v1")
+    p.add_argument("--judge-api-key", default=None)
     p.add_argument("--tasks", default=str(DEFAULT_TASKS))
     p.add_argument("--only", nargs="*", help="task id prefixes, e.g. P0 G06")
     p.add_argument("--neulbab-app-dir", dest="app_dir", default=None)
@@ -575,6 +662,9 @@ def main(argv: list[str] | None = None) -> int:
 
     data = load_data(args.app_dir)
     tasks = load_tasks(Path(args.tasks), args.only)
+    if not args.memory:  # the judge still sees the memory (as the ground truth of the user)
+        for t in tasks:
+            t["judge_memory"] = t.pop("memory", None)
     if args.agent == "reference":
         factory = reference_factory
     else:
@@ -589,9 +679,28 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     features = {k: getattr(args, k) for k in FEATURES}
+    user_sim = (
+        LLMConfig(
+            args.user_model,
+            args.user_base_url or args.llm_base_url or "https://api.openai.com/v1",
+            args.user_api_key or os.getenv("USER_AGENT_API_KEY") or os.getenv("API_KEY") or "",
+        )
+        if args.user_model
+        else None
+    )
+    judge = (
+        LLMConfig(
+            args.judge_model,
+            args.judge_base_url,
+            args.judge_api_key or os.getenv("JUDGE_API_KEY") or os.getenv("OPENAI_API_KEY") or "",
+            temperature=0.1,  # as in ElderBench
+        )
+        if args.judge_model
+        else None
+    )
 
     def one(task):
-        r = run_task(task, data, factory, features=features)
+        r = run_task(task, data, factory, features=features, user_sim=user_sim, judge=judge)
         mark = "PASS" if r.success else "FAIL"
         print(f"[{mark}{' SAFETY' if r.safety else ''}] {r.id}: {r.final_reply}", flush=True)
         return r
